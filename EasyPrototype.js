@@ -291,8 +291,35 @@
 
         // Returns the prototype corresponding to the current method or the objects prototype
         getCurrentPrototype : function getCurrentPrototype(methodName) {
-        //    console.debug('EasyPrototype::getCurrentPrototype', methodName);
+//            console.debug('EasyPrototype::getCurrentPrototype', methodName);
+
+            /** Approche plus précise mais plus couteuse, surtout si y a des getters. Sera même
+                surement source de bugs s'il y a des getters
+            */
+            var proto = methodName && this._super && this._super[methodName];
+
+            if(!proto) {
+                proto = this.prototype || this;
+
+                var parentProto = proto;
+
+                while(parentProto === proto) {
+                    if('constructor' in proto) {
+                        if(proto.constructor !== proto.constructor.prototype) {
+                            parentProto = proto.constructor.prototype;
+                        }
+                    }
+
+                    if(methodName in parentProto && parentProto[methodName] === proto[methodName]) {
+                        proto = parentProto;
+                    }
+                }
+            }
+
+            return proto;
+            /** Approche moins précise mais plus légère :
             return (methodName && this._super && this._super[methodName]) || this.prototype || this;
+            */
         },
 
         methodString : function methodString(methodName) {
