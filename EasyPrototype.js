@@ -45,7 +45,7 @@
 
         // Si la class fournie en ProtoClass n'est pas une ProtoClass, on en crée une ProtoClass
         if(ProtoClass && !ProtoClass.is_protoClass) {
-            ProtoClass = EasyPrototype.createProtoClass(ProtoClass.prototype);
+            ProtoClass = EasyPrototype.createProtoClass(ProtoClass.prototype.constructor, ProtoClass.prototype);
         }
 
         if (!proto) {
@@ -125,7 +125,6 @@
             // function. So this make it possible to have the execSuper method
             this.constructor = ClassConstructor;
 
-
             // On retourne le résultat de la méthode "init". Si la valeur de retour est d'un type
             // élémentaire (bool, int, string, undefined, null), cette valeur ne sera pas
             // retournée (fonctionnement de javascript). Si la valeur de retour en revanche est un
@@ -158,7 +157,7 @@
             // version plus short et avec moins de contrôles (plus de contrôle est-il necessaire ?) :
             // Cette version a l'avantage d'être rétro-compatible avec le version actuelle.
 
-            return (('getInstance' in this) && this.getInstance.apply(this, arguments)) ||
+            var instance = (('getInstance' in this) && this.getInstance.apply(this, arguments)) ||
                 (('init' in this) && this.init.apply(this, arguments));
 
             // Ancienne méthode
@@ -167,6 +166,17 @@
                 return this.init.apply(this, arguments);
             }
             */
+
+            if(instance === undef && 'destroy' in this) {
+                // On window unload, call destroy method
+                if(window.addEventListener) {
+                    window.addEventListener('unload', this.callback('destroy'), false);
+                }
+                else if(window.attachEvent) {
+                    window.attachEvent('onunload', this.callback('destroy'));
+                }
+            }
+            return instance;
         }
 
         setPrototype.apply(ClassConstructor, arguments);
@@ -201,7 +211,7 @@
 
         result = superProto[methodName].apply(this, args);
 
-        if (currentProto !== this && currentProto !== this.prototype) {
+        if (currentProto[methodName] !== (this[methodName] || this.prototype[methodName])) {
             this._super[methodName] = currentProto;
         }
         else {
