@@ -215,7 +215,7 @@
             this._super[methodName] = currentProto;
         }
         else {
-            delete (this._super[methodName]);
+            delete this._super[methodName];
 
             // On fait un check pour supprimer la propriété _super si elle est complètement vide
             for (i in this._super) {
@@ -224,7 +224,7 @@
             }
 
             if (i !== true) {
-                delete (this._super);
+                delete this._super;
             }
         }
         return result;
