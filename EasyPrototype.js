@@ -230,14 +230,24 @@
         return result;
     }
 
-    function getCallback(obj, methodName) {
+    function getCallback(obj, methodName, forceArgs) {
         var method = obj[methodName];
 
         function callback() {
-            if (obj[methodName] === callback) {
-                return method.apply(obj, arguments);
+
+            var args = [].slice.call(arguments).reverse(),
+                i = forceArgs.length;
+
+            while(i--) {
+                args.push(forceArgs[i]);
             }
-            return obj[methodName].apply(obj, arguments);
+
+            args.reverse();
+
+            if (obj[methodName] === callback) {
+                return method.apply(obj, args);
+            }
+            return obj[methodName].apply(obj, args);
         }
 
         return callback;
@@ -257,7 +267,7 @@
                     throw new Error('La méthode "' + methodName + '" n\'existe pas');
                 }
 
-                this._callbacks[methodName] = getCallback(this, methodName);
+                this._callbacks[methodName] = getCallback(this, methodName, [].slice.call(arguments, 1));
             }
             return this._callbacks[methodName];
         },
