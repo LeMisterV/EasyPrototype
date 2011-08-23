@@ -233,6 +233,8 @@
     function getCallback(obj, methodName, forceArgs) {
         var method = obj[methodName];
 
+        forceArgs = forceArgs || [];
+
         function callback() {
 
             var args = [].slice.call(arguments).reverse(),
@@ -267,13 +269,20 @@
                     throw new Error('La méthode "' + methodName + '" n\'existe pas');
                 }
 
-                this._callbacks[methodName] = getCallback(this, methodName, [].slice.call(arguments, 1));
+                // the callback method is diferent for each set of given arguments. So it's much
+                // more complicated to have a chache solution in the case arguments are given.
+                // That's why there's no cache when there's arguments, and so we can return directly
+                // the callback function
+                if(arguments.length > 1) {
+                    return getCallback(this, methodName, [].slice.call(arguments, 1));
+                }
+                this._callbacks[methodName] = getCallback(this, methodName);
             }
             return this._callbacks[methodName];
         },
 
         // returns a callback function for the parent method if any
-        getSuper : function getSuper(methodName) {
+        getSuper : function getSuper(methodName, args) {
         //    console.debug('EasyPrototype::getSuper', methodName);
             var $this = this,
                 currentProto = this.getCurrentPrototype(methodName),
@@ -297,7 +306,7 @@
 
             if (superProto) {
                 return function execSuper() {
-                    return callSuper.call($this, methodName, superProto, arguments);
+                    return callSuper.call($this, methodName, superProto, args || arguments);
                 };
             }
             return function execSuper() {};
@@ -306,7 +315,7 @@
         // Calls the parent method if any
         execSuper : function execSuper(methodName, args) {
         //    console.debug('EasyPrototype::execSuper', methodName);
-            return this.getSuper.call(this, methodName).apply(this, args || []);
+            return this.getSuper(methodName).apply(this, args || []);
         },
 
         // Returns the prototype corresponding to the current method or the objects prototype
