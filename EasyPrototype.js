@@ -1,5 +1,65 @@
 (function (window, undef) {
 
+    function getPurObject(obj) {
+        var proto = arguments.length > 1 ?
+                arguments[1] :
+                ('constructor' in obj && obj.constructor.prototype !== obj && obj.constructor.prototype),
+            objPur = {},
+            gotSlots = false,
+            allSlots = true,
+            slot;
+
+        for (slot in obj) {
+            if (
+                slot === 'constructor' ||
+                proto &&
+                slot in proto &&
+                proto[slot] === obj[slot]
+            ) {
+                allSlots = false;
+                continue;
+            }
+            objPur[slot] = obj[slot];
+            gotSlots = true;
+        }
+
+        // S'il y a un slot toString qui n'est pas le slot toString natif (pour IE)
+        if (
+            'toString' in obj &&
+            obj.toString !== ({}).toString
+        ) {
+            if(!(proto && 'toString' in proto && proto.toString === obj.toString)) {
+                objPur.toString = obj.toString;
+                gotSlots = true;
+            }
+            else {
+                allSlots = false;
+            }
+        }
+
+        return allSlots ? obj : gotSlots ? objPur : undef;
+    }
+
+    function getObjectPrototypes(obj) {
+        var prototypes = [],
+            objPur = {},
+            proto;
+
+        do {
+            proto = 'constructor' in obj && obj.constructor.prototype !== obj && obj.constructor.prototype;
+            objPur = getPurObject(obj, proto);
+
+            if (objPur) {
+                prototypes.push(objPur);
+            }
+
+            obj = proto;
+        } while (obj && obj !== EasyPrototype.prototype);
+
+        // On retourne un tableau des prototypes de l'objet commençant par le plus profond
+        return prototypes.reverse();
+    }
+
     // Fonction de génération de méthodes abstraites
     function setAbstractMethod(methodName) {
         function abstractMethod() {
@@ -14,57 +74,94 @@
 
         // On recoit différents types d'arguments :
         // - null : Ca veut dire qu'on ne veut pas de ProtoClass, même pas EasyPrototype
-        // - function : C'est une ProtoClass
+        // - 1ere function : C'est une ProtoClass si pas de ProtoClass null, sinon c'est une "interface"
+        // - functions sauf 1ere : c'est une "interface"
         // - array : C'est la liste des méthodes abstraites
-        // - autre : C'est le prototype
+        // - dernier autre : C'est le prototype
+        // - autres sauf dernier : Ce sont des "interfaces" a implémenter
 
         var ProtoClass,
             proto,
             abstracts,
+            abstractsProto,
+            interfaces = [],
+            implementList = [],
+            rest,
             i = arguments.length;
 
         // On parcours l'objet arguments pour répartir les données entre ProtoClass, proto et abstracts
-        while(i--) {
-            if(arguments[i] === null) {
+        while (i--) {
+            if (arguments[i] === null) {
                 ProtoClass = null;
             }
-            else if(typeof arguments[i] === 'function') {
-                ProtoClass = arguments[i];
+            else if (typeof arguments[i] === 'function') {
+                implementList.push(arguments[i]);
             }
-            else if(arguments[i] instanceof Array) {
+            else if (arguments[i] instanceof Array) {
                 abstracts = arguments[i];
             }
             else {
-                proto = arguments[i];
+                if (proto === undef) {
+                    proto = arguments[i];
+                }
+                else {
+                    implementList.push(arguments[i]);
+                }
             }
+        }
+
+        i = implementList.length;
+        while (i--) {
+            if(typeof implementList[i] === 'function') {
+                if(ProtoClass === undef) {
+                    ProtoClass = implementList[i];
+
+                    rest = implementList.slice(i + 1);
+                    implementList.length = i;
+                    implementList.push.apply(implementList, rest);
+                    continue;
+                }
+                else {
+                    implementList[i] = implementList[i].prototype;
+                }
+            }
+            interfaces.push.apply(interfaces, getObjectPrototypes(implementList[i]));
+        }
+
+        if(implementList.length) {
+            this.implementList = implementList;
         }
 
         // Si aucune ProtoClass n'est donnée et que ProtoClass est différent de null, on utilise
         // EasyPrototype comme ProtoClass
         ProtoClass = ProtoClass || (ProtoClass !== null && EasyPrototype);
 
-        // Si la class fournie en ProtoClass n'est pas une ProtoClass, on en crée une ProtoClass
-        if(ProtoClass && !ProtoClass.is_protoClass) {
-            ProtoClass = EasyPrototype.createProtoClass(ProtoClass.prototype.constructor, ProtoClass.prototype);
+        // On implémente les différentes interfaces
+        i = interfaces.reverse().length;
+        while (i--) {
+            ProtoClass = createProtoClass(ProtoClass, interfaces[i]);
         }
 
-        if (!proto) {
-            proto = {};
-        }
-
-        if (abstracts) {
+        // Mise en place du prototype contenant les méthodes abstraites
+        if (abstracts && abstracts.length) {
+            abstractsProto = {};
             i = abstracts.length;
             while (i--) {
-                proto[abstracts[i]] = setAbstractMethod(abstracts[i]);
+                abstractsProto[abstracts[i]] = setAbstractMethod(abstracts[i]);
             }
+            ProtoClass = createProtoClass(ProtoClass, abstractsProto);
         }
 
+        // Génération du prototype final
         if (ProtoClass) {
+            ProtoClass.createPrototype = true;
             proto = new ProtoClass(proto);
         }
 
         // On attache le prototype nouvellement créé à la fonction de construction
         this.prototype = proto;
+
+        this.implements = EasyPrototype.prototype.implements;
 
         if (proto.className) {
             // On reprend le className en propriété "name" de la fonction de construction afin d'avoir
@@ -80,103 +177,91 @@
         return this;
     }
 
-    function createProtoClass() {
-        function ProtoClassConstructor(proto) {
-            if (!(this instanceof ProtoClassConstructor)) {
-                throw new Error('You must use "new" keyword to create a prototype class instance');
-            }
-
-            if (proto !== undef && proto !== null) {
-                // On complète notre nouvel objet vide avec le contenu du prototype
-                var slot;
-                for (slot in proto) {
-                    if ((!(slot in this)) || this[slot] !== proto[slot]) {
-                        this[slot] = proto[slot];
-                    }
-                }
-
-                // Specific for IE that doesn't go through "toString" during a "for in" sequence
-                if (proto.toString &&
-                   proto.toString !== Object.prototype.toString &&
-                   proto.toString !== this.toString) {
-                    this.toString = proto.toString;
-                }
-            }
-
-            // This slot makes it possible to get the construction function of an
-            // object, and than to get the prototype of this construction function
-            // So this makes it possible to find the execSuper method
-            this.constructor = ProtoClassConstructor;
+    function commonConstruct(constructor, args) {
+        if (!(this instanceof constructor)) {
+            constructor.argsAsArray = true;
+            return new constructor(args);
         }
 
-        ProtoClassConstructor.is_protoClass = true;
+        // This slot makes it possible to get the construction function of an
+        // object, and than to get the prototype of this construction function
+        // So this makes it possible to find the execSuper method
+        this.constructor = constructor;
+
+        if(constructor.argsAsArray) {
+            delete constructor.argsAsArray;
+            args = args[0];
+        }
+
+        if (constructor.createPrototype) {
+            delete constructor.createPrototype;
+            initPrototype.apply(this, args);
+        }
+        else {
+            return initInstance.apply(this, args);
+        }
+    }
+
+    function initPrototype(proto) {
+        var slot;
+
+        if (proto !== undef && proto !== null) {
+            // On complète notre nouvel objet vide avec le contenu du prototype
+            for (slot in proto) {
+                if ((!(slot in this)) || this[slot] !== proto[slot]) {
+                    this[slot] = proto[slot];
+                }
+            }
+
+            // Specific for IE that doesn't go through "toString" during a "for in" sequence
+            if (proto.toString &&
+               proto.toString !== ({}).toString &&
+               proto.toString !== this.toString) {
+                this.toString = proto.toString;
+            }
+        }
+    }
+
+    function initInstance() {
+        // On retourne le résultat de la méthode "init". Si la valeur de retour est d'un type
+        // élémentaire (bool, int, string, undefined, null), cette valeur ne sera pas
+        // retournée (fonctionnement de javascript). Si la valeur de retour en revanche est un
+        // objet, alors c'est cet objet qui sera retourné au lieu de la nouvelle instance tout
+        // juste créée
+
+        var instance = (('getInstance' in this) && this.getInstance.apply(this, arguments)) ||
+            ('init' in this) && this.init.apply(this, arguments);
+
+        // Si on construit une nouvelle instance (pas de résultat à getInstance) et qu'une méthode
+        // destroy existe on met en place le processus de destruction au window.unload
+        if (instance === undef && 'destroy' in this) {
+            // On window unload, call destroy method
+            if (window.addEventListener) {
+                window.addEventListener('unload', this.callback('destroy'), false);
+            }
+            else if (window.attachEvent) {
+                window.attachEvent('onunload', this.callback('destroy'));
+            }
+        }
+
+        return instance;
+    }
+
+    // Creates a Class that will always create a prototype object (no init method called on
+    // instanciation)
+    function createProtoClass() {
+        function ProtoClassConstructor() {
+            ProtoClassConstructor.createPrototype = true;
+            return commonConstruct.call(this, ProtoClassConstructor, arguments);
+        }
 
         return setPrototype.apply(ProtoClassConstructor, arguments);
     }
 
+    // Creates a normal Class
     function createClass() {
         function ClassConstructor() {
-            if (!(this instanceof ClassConstructor)) {
-                throw new Error('You must use "new" keyword to create a class instance');
-            }
-
-            // This slot make it possible to get the construction function of an
-            // object, and than to get the prototype of this construction
-            // function. So this make it possible to have the execSuper method
-            this.constructor = ClassConstructor;
-
-            // On retourne le résultat de la méthode "init". Si la valeur de retour est d'un type
-            // élémentaire (bool, int, string, undefined, null), cette valeur ne sera pas
-            // retournée (fonctionnement de javascript). Si la valeur de retour en revanche est un
-            // objet, alors c'est cet objet qui sera retourné au lieu de la nouvelle instance tout
-            // juste créée
-
-            // TODO : vérifier l'utilité de ce return. Je trouve ça un peu moche de faire un return
-            // dans une fonction constructeur, mais il faut voir si certains cas l'exigent ou pas.
-            // Il faut également vérifier que cette fonctionnalité n'est utilisé nullepart avant de
-            // la virer
-            // Cette fonctionnalité est utilisée entre autre dans le script SyncDate ou MediaInfos
-            // et cet usage est tout à fait justifié. Pour éviter cet usage, il faudrait utiliser
-            // une solution de singleton ou de factory.
-            // Pour faire les choses plus proprement, on pourrait mettre en place une méthode static
-            // "getInstance" prenant les même paramettre que init et retournant l'instance voulue si
-            // elle existe déjà.
-            // exemple de code :
-            /*
-            if(typeof this.getInstance === 'function') {
-                var instance = this.getInstance.apply(this, arguments);
-                if(instance) {
-                    return instance;
-                }
-            }
-            if (typeof this.init === 'function') {
-                this.init.apply(this, arguments);
-            }
-            */
-
-            // version plus short et avec moins de contrôles (plus de contrôle est-il necessaire ?) :
-            // Cette version a l'avantage d'être rétro-compatible avec le version actuelle.
-
-            var instance = (('getInstance' in this) && this.getInstance.apply(this, arguments)) ||
-                (('init' in this) && this.init.apply(this, arguments));
-
-            // Ancienne méthode
-            /*
-            if (typeof this.init === 'function') {
-                return this.init.apply(this, arguments);
-            }
-            */
-
-            if(instance === undef && 'destroy' in this) {
-                // On window unload, call destroy method
-                if(window.addEventListener) {
-                    window.addEventListener('unload', this.callback('destroy'), false);
-                }
-                else if(window.attachEvent) {
-                    window.attachEvent('onunload', this.callback('destroy'));
-                }
-            }
-            return instance;
+            return commonConstruct.call(this, ClassConstructor, arguments);
         }
 
         setPrototype.apply(ClassConstructor, arguments);
@@ -197,10 +282,9 @@
         return ClassConstructor;
     }
 
-    function callSuper(methodName, superProto, args) {
+    function callSuper(methodName, currentProto, superProto, args) {
     //    console.debug('EasyPrototype::callSsuper', methodName, this._super, this._super[methodName] || this.prototype || this);
-        var currentProto = this.getCurrentPrototype(methodName),
-            result,
+        var result,
             i;
 
         if (!('_super' in this)) {
@@ -240,7 +324,7 @@
             var args = [].slice.call(arguments).reverse(),
                 i = forceArgs.length;
 
-            while(i--) {
+            while (i--) {
                 args.push(forceArgs[i]);
             }
 
@@ -255,7 +339,12 @@
         return callback;
     }
 
-    var EasyPrototype = createProtoClass({
+    function EasyPrototype(proto) {
+        EasyPrototype.createPrototype = true;
+        commonConstruct.call(this, EasyPrototype, arguments);
+    }
+
+    setPrototype.call(EasyPrototype, {
         className : 'EasyPrototype',
 
         // returns a callback function for the given method
@@ -269,8 +358,8 @@
                     throw new Error('La méthode "' + methodName + '" n\'existe pas');
                 }
 
-                // the callback method is diferent for each set of given arguments. So it's much
-                // more complicated to have a chache solution in the case arguments are given.
+                // the callback method is different for each set of given arguments. So it's much
+                // more complicated to have a cache solution in the case arguments are given.
                 // That's why there's no cache when there's arguments, and so we can return directly
                 // the callback function
                 if(arguments.length > 1) {
@@ -285,28 +374,40 @@
         getSuper : function getSuper(methodName, args) {
         //    console.debug('EasyPrototype::getSuper', methodName);
             var $this = this,
-                currentProto = this.getCurrentPrototype(methodName),
-                parentProto = currentProto,
+                originalProto = this.getCurrentPrototype(methodName),
+                currentProto = originalProto,
+                parentProto,
                 superProto;
 
             do {
-                if (!(('constructor' in parentProto) &&
-                    ('prototype' in parentProto.constructor) &&
-                    (parentProto.constructor.prototype !== parentProto) &&
-                    (methodName in parentProto.constructor.prototype) &&
-                    !parentProto.constructor.prototype[methodName].is_abstract)) {
-                    break;
-                }
-                parentProto = parentProto.constructor.prototype;
-                if (parentProto[methodName] !== currentProto[methodName]) {
-                    superProto = parentProto;
+                parentProto = 'constructor' in currentProto &&
+                    currentProto.constructor.prototype !== currentProto &&
+                    currentProto.constructor.prototype;
+
+                // TODO : Ci après une comparaison est faite entre deux valeurs. Cela
+                // pourra poser des problèmes si le slot en question est un getter, car
+                // alors cette méthode de comparaison déclenche l'exécution du getter
+                // ce qui peut avoir de lourdes concéquences. Il serait préférable donc
+                // à ce niveau de vérifier avant tout la présence d'un getter sur le
+                // slot
+                if (parentProto) {
+                    if (!(methodName in parentProto) ||
+                        parentProto[methodName].is_abstract) {
+                        break;
+                    }
+
+                    if (parentProto[methodName] !== currentProto[methodName]) {
+                        superProto = parentProto;
+                    }
+
+                    currentProto = parentProto;
                 }
             }
             while (!superProto);
 
             if (superProto) {
                 return function execSuper() {
-                    return callSuper.call($this, methodName, superProto, args || arguments);
+                    return callSuper.call($this, methodName, originalProto, superProto, args || arguments);
                 };
             }
             return function execSuper() {};
@@ -318,41 +419,54 @@
             return this.getSuper(methodName).apply(this, args || []);
         },
 
-        // Returns the prototype corresponding to the current method or the objects prototype
-        getCurrentPrototype : function getCurrentPrototype(methodName) {
-//            console.debug('EasyPrototype::getCurrentPrototype', methodName);
+        // Returns the prototype that own the given slot or the object/class's prototype
+        getCurrentPrototype : function getCurrentPrototype(slotName) {
+            // First we check if the given slot is a currently running method, and if so we get
+            // the current prototype in use if a super method has been called (stored in the
+            // _super property, see getSuper)
+            var parentProto,
+                proto = (slotName && this._super && this._super[slotName]) ||
+                    this.prototype ||
+                    this;
 
-            /** Approche plus précise mais plus couteuse, surtout si y a des getters. Sera même
-                surement source de bugs s'il y a des getters
-            */
-            var proto = methodName && this._super && this._super[methodName],
-                parentProto;
+            // If a slotName is given, we have to find the prototype that owns this slot.
+            // The top protoype may not own this property but maybe it's a super prototype who
+            // owns it. So we have to check the parent/super prototypes to be sure witch
+            // prototype owns the slot.
+            if (slotName && proto) {
+                do {
+                    // we get the parent prototype if any
+                    parentProto = 'constructor' in proto && proto.constructor.prototype !== proto && proto.constructor.prototype;
 
-            if(!proto) {
-                proto = this.prototype || this;
-
-                if(methodName) {
-                    parentProto = proto;
-
-                    while(parentProto === proto) {
-                        if('constructor' in proto) {
-                            if(proto.constructor !== proto.constructor.prototype) {
-                                parentProto = proto.constructor.prototype;
-                            }
-                        }
-
-                        if(methodName in parentProto && parentProto[methodName] === proto[methodName]) {
-                            proto = parentProto;
-                        }
-                    }
                 }
+                while (
+                    parentProto &&
+                    slotName in parentProto &&
+                    // TODO : Ici la comparaison est faite entre les deux valeurs. Cela
+                    // pourra poser des problèmes si le slot en question est un getter, car
+                    // alors cette méthode de comparaison déclenche l'exécution du getter
+                    // ce qui peut avoir de lourdes concéquences. Il serait préférable donc
+                    // à ce niveau de vérifier avant tout la présence d'un getter sur le
+                    // slot
+                    parentProto[slotName] === proto[slotName] &&
+                    (proto = parentProto)
+                )
             }
 
             return proto;
+        },
 
-            /** Approche moins précise mais plus légère :
-            return (methodName && this._super && this._super[methodName]) || this.prototype || this;
-            */
+        implements : function implements(object) {
+            var cls = ('constructor' in this && this.constructor) || this,
+                i = 'implementList' in cls && cls.implementList.length;
+
+            if(typeof object === 'function') {
+                object = object.prototype;
+            }
+
+            while (i-- && cls.implementList[i] !== object) {}
+
+            return i !== -1;
         },
 
         methodString : function methodString(methodName) {
@@ -366,6 +480,7 @@
         }
     });
 
+    EasyPrototype.prototype.constructor = EasyPrototype;
     EasyPrototype.createProtoClass = createProtoClass;
     EasyPrototype.createClass = createClass;
 
