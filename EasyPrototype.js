@@ -283,7 +283,6 @@
     }
 
     function callSuper(methodName, currentProto, superProto, args) {
-    //    console.debug('EasyPrototype::callSsuper', methodName, this._super, this._super[methodName] || this.prototype || this);
         var result,
             i;
 
@@ -340,6 +339,10 @@
     }
 
     function EasyPrototype(proto) {
+        if(!(this instanceof EasyPrototype)) {
+            return EasyPrototype.createClass.apply(this, arguments);
+        }
+
         EasyPrototype.createPrototype = true;
         commonConstruct.call(this, EasyPrototype, arguments);
     }
@@ -349,7 +352,6 @@
 
         // returns a callback function for the given method
         callback : function callback(methodName) {
-        //    console.debug('EasyPrototype::callback', methodName);
             if (!('_callbacks' in this)) {
                 this._callbacks = {};
             }
@@ -372,7 +374,6 @@
 
         // returns a callback function for the parent method if any
         getSuper : function getSuper(methodName, args) {
-        //    console.debug('EasyPrototype::getSuper', methodName);
             var $this = this,
                 originalProto = this.getCurrentPrototype(methodName),
                 currentProto = originalProto,
@@ -415,7 +416,6 @@
 
         // Calls the parent method if any
         execSuper : function execSuper(methodName, args) {
-        //    console.debug('EasyPrototype::execSuper', methodName);
             return this.getSuper(methodName).apply(this, args || []);
         },
 
@@ -470,12 +470,10 @@
         },
 
         methodString : function methodString(methodName) {
-        //    console.debug('EasyPrototype::methodString', methodName);
             return this.getCurrentPrototype(methodName).className + '::' + methodName;
         },
 
         toString : function toString(methodName) {
-        //    console.debug('EasyPrototype::toString', methodName);
             return this.getCurrentPrototype(methodName).className || 'unnamedObject';
         }
     });
