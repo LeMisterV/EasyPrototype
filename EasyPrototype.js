@@ -115,10 +115,7 @@
             if(typeof implementList[i] === 'function') {
                 if(ProtoClass === undef) {
                     ProtoClass = implementList[i];
-
-                    rest = implementList.slice(i + 1);
-                    implementList.length = i;
-                    implementList.push.apply(implementList, rest);
+                    implementList[i] = implementList[i].prototype;
                     continue;
                 }
                 else {
@@ -126,6 +123,18 @@
                 }
             }
             interfaces.push.apply(interfaces, getObjectPrototypes(implementList[i]));
+
+            if(
+                'constructor' in implementList[i] &&
+                'implementList' in implementList[i].constructor &&
+                implementList[i].constructor.implementList.length
+            ) {
+                implementList.push.apply(implementList, implementList[i].constructor.implementList);
+            }
+        }
+
+        if(ProtoClass && 'implementList' in ProtoClass) {
+            implementList.push.apply(implementList, ProtoClass.implementList);
         }
 
         if(implementList.length) {
@@ -459,6 +468,10 @@
         implements : function implements(object) {
             var cls = ('constructor' in this && this.constructor) || this,
                 i = 'implementList' in cls && cls.implementList.length;
+
+            if(object === cls || object === cls.prototype) {
+                return true;
+            }
 
             if(typeof object === 'function') {
                 object = object.prototype;
