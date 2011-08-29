@@ -354,7 +354,7 @@
 
     function EasyPrototype(proto) {
         if(!(this instanceof EasyPrototype)) {
-            return EasyPrototype.createClass.apply(this, arguments);
+            return createClass.apply(this, arguments);
         }
 
         EasyPrototype.createPrototype = true;
@@ -391,7 +391,12 @@
                 parentClass,
                 superClass;
 
-            if(currentClass === cls && currentClass.prototype[methodName] !== this[methodName]) {
+            // Dans le cas d'une instance, currentClass est obligatoirement au moins une méthode du
+            // prototype.
+            // On doit donc commencer par contrôler que la currentClass n'a pas été surchargée par
+            // une méthode sur l'instance, et dans ce cas il faut donc appeler la méthode du
+            // currentClass.
+            if(cls !== this && currentClass === cls && currentClass.prototype[methodName] !== this[methodName]) {
                 superClass = currentClass;
             }
 
@@ -481,10 +486,11 @@
 
         slotDefinition : function slotDefinition(slotName) {
             var className = ('prototype' in this && this.className) || this.constructor.className,
-                protoName = this.getConstructor(slotName).className;
+                protoName = this.getConstructor(slotName).className,
+                instanceNum = this.instanceNum !== undef ? '[' + this.instanceNum + ']' : '';
 
             protoName = (protoName !== className) && '(' + protoName + ')';
-            return className + '[' + this.instanceNum + ']::' + slotName + (protoName || '');
+            return className + instanceNum + '::' + slotName + (protoName || '');
         },
 
         methodString : function methodString(methodName) {
