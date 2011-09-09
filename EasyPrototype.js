@@ -42,7 +42,7 @@
             return [];
         }
 
-        var proto = 'constructor' in obj && obj.constructor.prototype !== obj && obj.constructor.prototype,
+        var proto = 'constructor' in obj && obj.constructor !== ({}).constructor && obj.constructor.prototype !== obj && obj.constructor.prototype,
             purProtos = getPurPrototypes(proto),
             purObj = getPurObject(obj, proto);
 
@@ -56,7 +56,7 @@
     // Fonction de génération de méthodes abstraites
     function setAbstractMethod(methodName) {
         function abstractMethod() {
-            throw new Error('Méthode abstraite non surchargée : ' + this.toString() + ':' + methodName);
+            throw new Error('Méthode abstraite non surchargée : ' + this.slotDefinition(methodName)[0]);
         }
         abstractMethod.is_abstract = true;
         return abstractMethod;
@@ -110,22 +110,31 @@
             }
         }
 
+        className = className || proto.className || 'unNamedClass';
+
         i = implementList.length;
         while (i--) {
             if(typeof implementList[i] === 'function') {
                 if('implementList' in implementList[i]) {
+//                    implementList.push('Héritages de ' + implementList[i].className);
                     implementList.push.apply(implementList, implementList[i].implementList);
+                    if(implementList[i] !== ProtoClass && implementList[i].implementList[implementList[i].implementList.length - 1] === EasyPrototype.prototype) {
+                        implementList.length--;
+                    }
+//                    implementList.push('// Héritages de ' + implementList[i].className);
                 }
                 interfaceName = implementList[i].className;
                 implementList[i] = implementList[i].prototype;
             }
             else if('constructor' in implementList[i]) {
-                if('prototype' in implementList[i].constructor && className in implementList[i].constructor) {
+//                implementList.push('Héritages d\'une instance de ' + implementList[i].constructor.className);
+                if('prototype' in implementList[i].constructor && 'className' in implementList[i].constructor) {
                     implementList.push(implementList[i].constructor.prototype);
+                    if('implementList' in implementList[i].constructor) {
+                        implementList.push.apply(implementList, implementList[i].constructor.implementList);
+                    }
                 }
-                if('implementList' in implementList[i].constructor) {
-                    implementList.push.apply(implementList, implementList[i].constructor.implementList);
-                }
+//                implementList.push('//Héritage d\'une instance de ' + implementList[i].constructor.className);
             }
             if(ProtoClass && implementList[i] === ProtoClass.prototype) {
                 continue;
@@ -136,6 +145,7 @@
             }
             interfaces.push.apply(interfaces, getPurPrototypes(implementList[i]));
         }
+
         // If ProtoClass not defined and not null we use EasyPrototype as the ProtoClass and
         // register it as an interface
         if(ProtoClass !== (ProtoClass || null)) {
@@ -146,28 +156,26 @@
         if(implementList.length) {
             this.implementList = implementList;
         }
-
         // On implémente les différentes interfaces
         i = interfaces.reverse().length;
         while (i--) {
             if(typeof interfaces[i] === 'string') {
-                interfaceName = ' ' + interfaces[i];
+                interfaceName = interfaces[i];
             }
             else {
-                ProtoClass = createProtoClass('Interface' + interfaceName, ProtoClass, interfaces[i]);
+                ProtoClass = createProtoClass(className + '>' + interfaceName, ProtoClass, interfaces[i]);
             }
         }
-
         // Mise en place du prototype contenant les méthodes abstraites
         if (abstracts && abstracts.length) {
             abstractsProto = {};
             i = abstracts.length;
             while (i--) {
-                if(ProtoClass && !(abstracts[i] in ProtoClass.prototype)) {
+                if(!ProtoClass || !(abstracts[i] in ProtoClass.prototype)) {
                     abstractsProto[abstracts[i]] = setAbstractMethod(abstracts[i]);
                 }
             }
-            ProtoClass = createProtoClass(ProtoClass, abstractsProto);
+            ProtoClass = createProtoClass(className + '_abstracts', ProtoClass, abstractsProto);
         }
 
         // Génération du prototype final
@@ -179,14 +187,15 @@
         // On attache le prototype nouvellement créé à la fonction de construction
         this.prototype = proto;
 
-        this.implements = EasyPrototype.prototype.implements;
+        this.contains = EasyPrototype.prototype.contains;
         this.getConstructor = EasyPrototype.prototype.getConstructor;
         this.toString = EasyPrototype.prototype.toString;
         this.slotDefinition = EasyPrototype.prototype.slotDefinition;
-
-        this.className = className || proto.className || 'unNamedClass';
+        this.logSlotDefinition = EasyPrototype.prototype.logSlotDefinition;
 
         this.instancesCount = 0;
+
+        this.className = className;
 
         return this;
     }
@@ -266,26 +275,25 @@
     // Creates a Class that will always create a prototype object (no init method called on
     // instanciation)
     function createProtoClass() {
-        function ProtoClassConstructor() {
+        var ProtoClassConstructor = function () {
             ProtoClassConstructor.createPrototype = true;
             return commonConstruct.call(this, ProtoClassConstructor, arguments);
-        }
+        };
 
         return initConstructor.apply(ProtoClassConstructor, arguments);
     }
 
     // Creates a normal Class
     function createClass() {
-        function ClassConstructor() {
+        var ClassConstructor = function () {
             return commonConstruct.call(this, ClassConstructor, arguments);
-        }
+        };
 
         initConstructor.apply(ClassConstructor, arguments);
 
         // On défini des méthodes de classe génériques
         ClassConstructor.getSuper = EasyPrototype.prototype.getSuper;
         ClassConstructor.execSuper = EasyPrototype.prototype.execSuper;
-        ClassConstructor.methodString = EasyPrototype.prototype.methodString;
 
         // Si la méthode "classSetup" existe, on l'exécute. Cette méthode est destinée à
         // initialiser la classe
@@ -299,31 +307,28 @@
     function callSuper(methodName, currentClass, superClass, args) {
         var result,
             i,
-            cls = ('constructor' in this && this.constructor !== Function) ?
-                this.constructor :
-                this;
+            cls = this.getConstructor(),
+            added;
 
-        if (!('_super' in this)) {
-            this._super = {};
-        }
+        this._super = this._super || {};
+        this._super.length = this._super.length || 0;
+
+        added = methodName in this._super ? 0 : 1;
 
         this._super[methodName] = superClass;
+        this._super.length+= added;
 
         result = superClass.prototype[methodName].apply(this, args);
 
-        if (currentClass !== cls) {
+        if (!added) {
             this._super[methodName] = currentClass;
         }
         else {
             delete this._super[methodName];
+            this._super.length--;
 
             // On fait un check pour supprimer la propriété _super si elle est complètement vide
-            for (i in this._super) {
-                i = true;
-                break;
-            }
-
-            if (i !== true) {
+            if(!this._super.length) {
                 delete this._super;
             }
         }
@@ -368,7 +373,7 @@
             // more complicated to have a cache solution in the case arguments are given.
             // That's why there's no cache when there's arguments, and so we can return directly
             // the callback function
-            if(arguments.length > 1) {
+            if (arguments.length > 1) {
                 return getCallback(this, methodName, [].slice.call(arguments, 1));
             }
             if (!('_callbacks' in this)) {
@@ -378,6 +383,31 @@
                 this._callbacks[methodName] = getCallback(this, methodName);
             }
             return this._callbacks[methodName];
+        },
+
+        lazyCallback : function lazyCallback() {
+            var obj = this,
+                args = arguments,
+                delay = 0,
+                func,
+                rest;
+
+            if (typeof args[1] === 'number') {
+                delay = args[1];
+                rest = [].slice.call(args, 2);
+                args.length = 1;
+                rest.push.apply(args, rest);
+            }
+
+            func = this.callback.apply(this, args);
+
+            return function lazyCallback() {
+                var args = arguments;
+
+                window.setTimeout(function () {
+                    func.apply(obj, args);
+                }, 0);
+            };
         },
 
         // returns a callback function for the parent method if any
@@ -396,11 +426,11 @@
             // On doit donc commencer par contrôler que la currentClass n'a pas été surchargée par
             // une méthode sur l'instance, et dans ce cas il faut donc appeler la méthode du
             // currentClass.
-            if(cls !== this && currentClass === cls && currentClass.prototype[methodName] !== this[methodName]) {
+            if (cls !== this && currentClass === cls && currentClass.prototype[methodName] !== this[methodName]) {
                 superClass = currentClass;
             }
 
-            while(!superClass) {
+            while (!superClass) {
                 parentClass = 'constructor' in currentClass.prototype &&
                     currentClass.prototype.constructor !== currentClass &&
                     currentClass.prototype.constructor;
@@ -442,8 +472,8 @@
             var cls;
 
             if(subCls !== undef) {
-                if(slotName in this.prototype && this.prototype[slotName] === subCls.prototype[slotName]) {
-                    if('constructor' in this.prototype && this.prototype.constructor !== this && 'getConstructor' in this.prototype.constructor) {
+                if (slotName in this.prototype && this.prototype[slotName] === subCls.prototype[slotName]) {
+                    if ('constructor' in this.prototype && this.prototype.constructor !== this && 'getConstructor' in this.prototype.constructor) {
                         return this.prototype.constructor.getConstructor(slotName, this);
                     }
                     return this;
@@ -467,8 +497,8 @@
             return cls;
         },
 
-        implements : function implements(object) {
-            var cls = ('constructor' in this && this.constructor !== Function && this.constructor) || this,
+        contains : function contains(object) {
+            var cls = this.getConstructor(),
                 i = 'implementList' in cls && cls.implementList.length;
 
             if(object === this || object === cls || object === cls.prototype) {
@@ -486,15 +516,39 @@
 
         slotDefinition : function slotDefinition(slotName) {
             var className = ('prototype' in this && this.className) || this.constructor.className,
-                protoName = this.getConstructor(slotName).className,
+                constructor = this.getConstructor(slotName),
+                constructorName = constructor.className,
+                protoArgs = slotName in constructor.prototype && constructor.prototype[slotName].arguments,
+                args = [],
                 instanceNum = this.instanceNum !== undef ? '[' + this.instanceNum + ']' : '';
 
-            protoName = (protoName !== className) && '(' + protoName + ')';
-            return className + instanceNum + '::' + slotName + (protoName || '');
+            constructorName = (constructorName !== className) ? '>' + constructorName : '';
+
+            args.push(className + instanceNum + constructorName + '::' + slotName);
+            if (protoArgs) {
+                args.push.apply(args, protoArgs);
+            }
+            if (arguments.length > 1) {
+                args.push.apply(args, [].slice.call(arguments, 1));
+            }
+
+            return args;
         },
 
-        methodString : function methodString(methodName) {
-            return this.slotDefinition(methodName);
+        logSlotDefinition : function logSlotDefinition(slotName) {
+            if(!('console' in window) || !('debug' in console)) {
+                return;
+            }
+
+            var method = 'info' in console ? 'info' : 'log',
+                slotDef = this.slotDefinition.apply(this, arguments);
+
+            if(!('apply' in console[method])) {
+                Function.prototype.apply.apply(console[method], [console, slotDef]);
+            }
+            else {
+                console[method].apply(console, slotDef);
+            }
         },
 
         toString : function toString() {
