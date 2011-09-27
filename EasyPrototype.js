@@ -426,7 +426,7 @@
             // On doit donc commencer par contrôler que la currentClass n'a pas été surchargée par
             // une méthode sur l'instance, et dans ce cas il faut donc appeler la méthode du
             // currentClass.
-            if (cls !== this && currentClass === cls && currentClass.prototype[methodName] !== this[methodName]) {
+            if (cls !== this && currentClass === cls && (!('_super' in this && methodName in this._super)) && currentClass.prototype[methodName] !== this[methodName]) {
                 superClass = currentClass;
             }
 
@@ -536,7 +536,7 @@
         },
 
         logSlotDefinition : function logSlotDefinition(slotName) {
-            if(!('console' in window) || !('debug' in console)) {
+            if(!('console' in window) || !('debug' in console) || ('restrictSlotsLogged' in window && !(slotName in window.restrictSlotsLogged))) {
                 return;
             }
 
