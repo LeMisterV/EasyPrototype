@@ -1,5 +1,27 @@
 (function (window, undef) {
 
+    /** collect all slots owned by an object (none of the slots inherited)
+     *
+     * An object can own its own slots and inherit slots from his prototype parents.
+     * This function will check all slots, and return an object containing only the slots owned
+     * directly by the object.
+     * The result of this function will generally be a new object containing the object's own slots.
+     * If the original object doesn't inherit any slot from a parent prototype's object, the 
+     * original object will be returned.
+     * If the original object doesn't own any slot by itself, than the function will return
+     * undefined (easyer to check than an empty object)
+     *
+     * This function is only called from the getPurPrototypes function. In this function, we already
+     * got a reference to the prototype object. To avoid loosing time searching for this object
+     * again and again, we pass this reference as a parameter to getPurObject.
+     *
+     * @param obj (Object) The original object we want to get slots from
+     * @param proto (Object|undefined) The object's prototype object
+     *
+     * @return (Object|undefined) The original object or a new object containing all the original
+     *                            object's slots, or undefined if the original object doesn't own
+     *                            any slot by itself
+     */
     function getPurObject(obj, proto) {
         var objPur = {},
             gotSlots = false,
@@ -7,25 +29,27 @@
             slot;
 
         for (slot in obj) {
+            // we skip the "constructor" slot, witch is an exception.
+            // If a slot is the same on the object and on his prototype, than this slot is
+            // inherited, so we skip it
             if (
                 slot === 'constructor' ||
                 proto &&
                 slot in proto &&
                 proto[slot] === obj[slot]
             ) {
+                // We skip a slot, so we remember that not all slots are kept
                 allSlots = false;
                 continue;
             }
+
             objPur[slot] = obj[slot];
             gotSlots = true;
         }
 
-        // S'il y a un slot toString qui n'est pas le slot toString natif (pour IE)
-        if (
-            obj.toString &&
-            obj.toString !== ({}).toString
-        ) {
-            if(!(proto && proto.toString === obj.toString)) {
+        // (For IE) Check if the "toString" method exists and is different from the native Object toString method
+        if ( obj.toString && obj.toString !== ({}).toString ) {
+            if (!(proto && proto.toString === obj.toString)) {
                 objPur.toString = obj.toString;
                 gotSlots = true;
             }
@@ -37,6 +61,17 @@
         return allSlots ? obj : gotSlots ? objPur : undef;
     }
 
+    /** Get an array of all different "pur prototypes" composing the object
+     *
+     * This function does a kind of dissection of the object, returning an array of "pur objects",
+     * each one corresponding to one of the object's prototypes
+     * The first element of the resulting array correspond to the deeper prototype. The last cel of
+     * the array contains the objects own slots.
+     *
+     * @param obj (*) The object we want to dissect
+     *
+     * @return (Array) each "pur object" composing the original object
+     */
     function getPurPrototypes(obj) {
         if(!obj || obj === EasyPrototype.prototype) {
             return [];
@@ -53,16 +88,74 @@
         return purProtos;
     }
 
-    // Fonction de génération de méthodes abstraites
+/** remove for production */
+    /** Creates a function that can be identified as an "abstract method"
+     *
+     * When defining that a method is abstract, this means it should be implemented by the
+     * inheriting object. If it's not, there should be an error thrown if the method is called.
+     * "setAbstractMethod" creates a function that will be inserted in an object's prototypes
+     *
+     * Everything about abstract methods is not necessary for programs to work. The only goal of all
+     * this is to be able to have more precise errors, and better programming habits.
+     *
+     * @param methodName (string) The name of the method that should be implemented
+     *
+     * @return (function) the function to be inserted inside objects prototypes when inheriting an
+     *                    abstract method
+     */
     function setAbstractMethod(methodName) {
         function abstractMethod() {
-            throw new Error('Méthode abstraite non surchargée : ' + this.slotDefinition(methodName)[0]);
+            throw new Error('Abstracted method not implemented : ' + this.slotDefinition(methodName)[0]);
         }
         abstractMethod.is_abstract = true;
         return abstractMethod;
     }
+/** /remove for production */
 
-    // Fonction de construction du prototype d'une classe
+    /** Build a constructor function (make prototype and default slots)
+     *
+     * The params types can be :
+     *  - string (the class name)
+     *  - null (disable protoClass)
+     *  - function (protoClass or "interfaces")
+     *  - array (abstract classes)
+     *  - object (interfaces or prototype)
+     *
+     * The params passed to this function can define :
+     *  - The class name (if param is a string)
+     *  - The main inherited protoClass (null or the first function passed in params)
+     *  - The "interfaces" to be implemented (functions passed in params except the
+     *      "protoClass" one if any, or objects except the last one)
+     *  - The prototype (The last object param)
+     *  - The abstract methods (if param is an array)
+     *
+     * About class Name :
+     * For each class created with EasyPrototype, it's possible to define a class name. This name
+     * will generally be usefull for debugging, and is also used in other cases (interfaces, 
+     *
+     * About protoClass :
+     * I use here the word protoClass to define a class  that will be used only to create a
+     * prototype, not an instance. When instanciating a protoClass, the init method will not be
+     * called, and a "proto" param will be used to define some slots on the new object created.
+     * Any EasyPrototype class can be used as a protoClass. This way it's possible to extend any
+     * class.
+     *
+     * About interfaces :
+     * I use here the word interfaces but it's not the same concept as in java. In java, interfaces
+     * only describe objects API. Here interfaces are more like some prototypes fragments. Each
+     * interface contains methods that will be part of the final object inside its prototype. this
+     * can't be called inheritance because the resulting object won't be "instanceof" thoses
+     * interfaces (no multiple inheritence solution in javascript). This is why I added a "contains"
+     * method to EasyPrototype : With this method it's possible to check if an object implements
+     * a specific interface ("implements" is a reserved keyword, I couldn't use it).
+     *
+     *
+     * @this (function) The constructor function
+     *
+     * @params (mixed) Elements defining the constructor to build
+     *
+     * @return (function) The final constructor function
+     */
     function initConstructor() {
 
         // On recoit différents types d'arguments :
@@ -102,7 +195,7 @@
             else if(proto === undef && type !== 'function') {
                 proto = args[i];
             }
-            else {
+            else if (args[i] !== undef) {
                 if(type === 'function' && ProtoClass !== null) {
                     ProtoClass = args[i];
                 }
@@ -116,25 +209,21 @@
         while (i--) {
             if(typeof implementList[i] === 'function') {
                 if('implementList' in implementList[i]) {
-//                    implementList.push('Héritages de ' + implementList[i].className);
                     implementList.push.apply(implementList, implementList[i].implementList);
                     if(implementList[i] !== ProtoClass && implementList[i].implementList[implementList[i].implementList.length - 1] === EasyPrototype.prototype) {
                         implementList.length--;
                     }
-//                    implementList.push('// Héritages de ' + implementList[i].className);
                 }
                 interfaceName = implementList[i].className;
                 implementList[i] = implementList[i].prototype;
             }
             else if('constructor' in implementList[i]) {
-//                implementList.push('Héritages d\'une instance de ' + implementList[i].constructor.className);
                 if('prototype' in implementList[i].constructor && 'className' in implementList[i].constructor) {
                     implementList.push(implementList[i].constructor.prototype);
                     if('implementList' in implementList[i].constructor) {
                         implementList.push.apply(implementList, implementList[i].constructor.implementList);
                     }
                 }
-//                implementList.push('//Héritage d\'une instance de ' + implementList[i].constructor.className);
             }
             if(ProtoClass && implementList[i] === ProtoClass.prototype) {
                 continue;
@@ -156,7 +245,7 @@
         if(implementList.length) {
             this.implementList = implementList;
         }
-        // On implémente les différentes interfaces
+        // Here we implement all interfaces
         i = interfaces.reverse().length;
         while (i--) {
             if(typeof interfaces[i] === 'string') {
@@ -166,7 +255,9 @@
                 ProtoClass = createProtoClass(className + '>' + interfaceName, ProtoClass, interfaces[i]);
             }
         }
-        // Mise en place du prototype contenant les méthodes abstraites
+
+/** remove for production */
+        // Insertion of the "abstract methods prototype"
         if (abstracts && abstracts.length) {
             abstractsProto = {};
             i = abstracts.length;
@@ -177,29 +268,49 @@
             }
             ProtoClass = createProtoClass(className + '_abstracts', ProtoClass, abstractsProto);
         }
+/** /remove for production */
 
-        // Génération du prototype final
+        // If proto contains a slot called __statics__, all slots in it will be added to the
+        // constructor as static values, and the __statics__ slot will be removed
+        if(proto && '__statics__' in proto) {
+            for (i in proto.__statics__) {
+                if(proto.__statics__[i] === true && i in proto) {
+                    this[i] = proto[i];
+                }
+                else {
+                    this[i] = proto.__statics__[i];
+                }
+            }
+            delete proto.__statics__;
+        }
+
+        // Building the final prototype object
         if (ProtoClass) {
             ProtoClass.createPrototype = true;
             proto = new ProtoClass(proto);
         }
 
-        // On attache le prototype nouvellement créé à la fonction de construction
         this.prototype = proto;
 
         this.contains = EasyPrototype.prototype.contains;
         this.getConstructor = EasyPrototype.prototype.getConstructor;
         this.toString = EasyPrototype.prototype.toString;
+/** remove for production */
         this.slotDefinition = EasyPrototype.prototype.slotDefinition;
         this.logSlotDefinition = EasyPrototype.prototype.logSlotDefinition;
-
-        this.instancesCount = 0;
+/** /remove for production */
 
         this.className = className;
 
         return this;
     }
 
+    /** Constructor actions for a "protoClass" instanciation
+     *
+     * @this (object) the new object instance created
+     *
+     * @param proto (object) All the slots to be added to the new object instance
+     */
     function initPrototype(proto) {
         var slot;
 
@@ -220,8 +331,21 @@
         }
     }
 
+    /** Constructor actions for a normal instanciation
+     *
+     * @this (object) the new object instance created
+     *
+     * @params (mixed) All the params for the class construction (params passed to the init method)
+     *
+     * @return the new instance created, or the replacement if an already existing object is to be
+     *   used instead (see getInstance method)
+     */
     function initInstance() {
-        this.instanceNum = this.constructor.instancesCount++;
+        var instance;
+
+        this.instanceNum = this.constructor.instancesCount || 0;
+
+        this.constructor.instancesCount = this.instanceNum + 1;
 
         // On retourne le résultat de la méthode "init". Si la valeur de retour est d'un type
         // élémentaire (bool, int, string, undefined, null), cette valeur ne sera pas
@@ -229,7 +353,7 @@
         // objet, alors c'est cet objet qui sera retourné au lieu de la nouvelle instance tout
         // juste créée
 
-        var instance = (('getInstance' in this) && this.getInstance.apply(this, arguments)) ||
+        instance = (('getInstance' in this) && this.getInstance.apply(this, arguments)) ||
             ('init' in this) && this.init.apply(this, arguments);
 
         // Si on construit une nouvelle instance (pas de résultat à getInstance) et qu'une méthode
@@ -247,6 +371,19 @@
         return instance;
     }
 
+    /** Constructor actions for any instanciation
+     *
+     * This function will do any common construction action, and than will delegate to
+     * "initPrototype" or "initInstance" depending on the kind of construction we asked (instance or prototype)
+     *
+     * @this (object) the new object instance created
+     *
+     * @param constructor (function) The constructor function used to create the object
+     * @param args (arguments-array) The arguments passed to the constructor function
+     *
+     * @return the new instance created, or the replacement if an already existing object is to be
+     *   used instead (see getInstance method)
+     */
     function commonConstruct(constructor, args) {
         if (!(this instanceof constructor)) {
             constructor.argsAsArray = true;
@@ -255,7 +392,7 @@
 
         // This slot makes it possible to get the construction function of an
         // object, and than to get the prototype of this construction function
-        // So this makes it possible to find the execSuper method
+        // So this makes it possible to find the super methods
         this.constructor = constructor;
 
         if(constructor.argsAsArray) {
@@ -339,7 +476,7 @@
         var method = obj[methodName];
 
         if (typeof method !== 'function') {
-            throw new Error('La méthode "' + methodName + '" n\'existe pas');
+            throw new Error('The "' + methodName + '" method doesn\'t  exist');
         }
 
         forceArgs = forceArgs || [];
@@ -410,7 +547,7 @@
             };
         },
 
-        // returns a callback function for the parent method if any
+        // returns a callback function for the super method if any
         getSuper : function getSuper(methodName, args) {
             var $this = this,
                 cls = ('constructor' in this && this.constructor !== Function) ?
@@ -463,7 +600,7 @@
             return function execSuper() {};
         },
 
-        // Calls the parent method if any
+        // Calls the super method if any
         execSuper : function execSuper(methodName, args) {
             return this.getSuper(methodName).apply(this, args || []);
         },
@@ -473,7 +610,9 @@
 
             if(subCls !== undef) {
                 if (slotName in this.prototype && this.prototype[slotName] === subCls.prototype[slotName]) {
-                    if ('constructor' in this.prototype && this.prototype.constructor !== this && 'getConstructor' in this.prototype.constructor) {
+                    if ( 'constructor' in this.prototype &&
+                         this.prototype.constructor !== this &&
+                         'getConstructor' in this.prototype.constructor) {
                         return this.prototype.constructor.getConstructor(slotName, this);
                     }
                     return this;
@@ -499,7 +638,7 @@
 
         contains : function contains(object) {
             var cls = this.getConstructor(),
-                i = 'implementList' in cls && cls.implementList.length;
+                i = ('implementList' in cls && cls.implementList.length) || 0;
 
             if(object === this || object === cls || object === cls.prototype) {
                 return true;
@@ -513,7 +652,7 @@
 
             return i !== -1;
         },
-
+/** remove for production */
         slotDefinition : function slotDefinition(slotName) {
             var className = ('prototype' in this && this.className) || this.constructor.className,
                 constructor = this.getConstructor(slotName),
@@ -546,11 +685,17 @@
             if(!('apply' in console[method])) {
                 Function.prototype.apply.apply(console[method], [console, slotDef]);
             }
+            else if ('groupCollapsed' in console && 'trace' in console) {
+                console.groupCollapsed(slotDef[0]);
+                console.log.apply(console, slotDef);
+                console.trace();
+                console.groupEnd();
+            }
             else {
                 console[method].apply(console, slotDef);
             }
         },
-
+/** /remove for production */
         toString : function toString() {
             return this.getConstructor().className;
         }
