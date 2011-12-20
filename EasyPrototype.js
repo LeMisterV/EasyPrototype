@@ -105,10 +105,27 @@
      */
     function setAbstractMethod(methodName) {
         function abstractMethod() {
-            throw new Error('Abstracted method not implemented : ' + this.slotDefinition(methodName)[0]);
+            throw new Error('Abstract method not implemented : ' + this.slotDefinition(methodName)[0]);
         }
         abstractMethod.is_abstract = true;
         return abstractMethod;
+    }
+
+    /** just need to have a global function with this name for debug. To remove for production. */
+    window.nologSlotDefinition = function() {};
+
+    /** Add to a method a call to 'logSlotDefinition'. This way we can log every method execution */
+    function getLogLayer(key, func) {
+        function logLayer() {
+            if('logSlotDefinition' in this) {
+                this.logSlotDefinition(key);
+            }
+            return func.apply(this, arguments);
+        }
+
+        logLayer.original = func;
+
+        return logLayer;
     }
 /** /remove for production */
 
@@ -203,7 +220,7 @@
             }
         }
 
-        className = className || proto.className || 'unNamedClass';
+        className = className || (proto && proto.className) || 'unNamedClass';
 
         i = implementList.length;
         while (i--) {
@@ -283,7 +300,23 @@
             }
             delete proto.__statics__;
         }
-
+/** remove for production */
+        if (proto && 'hasOwnProperty' in proto && 'toString' in getLogLayer) {
+            if('nolog' in proto) {
+                delete proto.nolog;
+            }
+            else {
+                for (i in proto) {
+                    if(proto.hasOwnProperty(i) &&
+                        typeof proto[i] === 'function' &&
+                        !('original' in proto[i]) &&
+                        proto[i].toString().indexOf('logSlotDefinition') === -1) {
+                        proto[i] = getLogLayer(i, proto[i]);
+                    }
+                }
+            }
+        }
+/** /remove for production */
         // Building the final prototype object
         if (ProtoClass) {
             ProtoClass.createPrototype = true;
@@ -352,13 +385,15 @@
         // retournée (fonctionnement de javascript). Si la valeur de retour en revanche est un
         // objet, alors c'est cet objet qui sera retourné au lieu de la nouvelle instance tout
         // juste créée
+        instance = ('getInstance' in this) && this.getInstance.apply(this, arguments);
 
-        instance = (('getInstance' in this) && this.getInstance.apply(this, arguments)) ||
-            ('init' in this) && this.init.apply(this, arguments);
+        if ((!instance || instance === this) && 'init' in this) {
+            instance = this.init.apply(this, arguments);
+        }
 
         // Si on construit une nouvelle instance (pas de résultat à getInstance) et qu'une méthode
         // destroy existe on met en place le processus de destruction au window.unload
-        if (instance === undef && 'destroy' in this) {
+        if ((!instance || instance === this) && 'destroy' in this) {
             // On window unload, call destroy method
             if (window.addEventListener) {
                 window.addEventListener('unload', this.callback('destroy'), false);
@@ -504,6 +539,9 @@
     }
 
     initConstructor.call(EasyPrototype, 'EasyPrototype', null, {
+/** remove for production */
+        nolog : true,
+/** /remove for production */
         // returns a callback function for the given method
         callback : function callback(methodName) {
             // the callback method is different for each set of given arguments. So it's much
@@ -704,6 +742,26 @@
     EasyPrototype.prototype.constructor = EasyPrototype;
     EasyPrototype.createProtoClass = createProtoClass;
     EasyPrototype.createClass = createClass;
+/** remove for production */
+    EasyPrototype.restrictSlots = function restrictSlots(name) {
+        window.restrictSlotsLogged = window.restrictSlotsLogged || {};
+
+        if (typeof name === 'string') {
+            window.restrictSlotsLogged[name] = true;
+        }
+        else if (name instanceof Array) {
+            var len = name.length;
+            while (len--) {
+                window.restrictSlotsLogged[name[len]] = true;
+            }
+        }
+        else if(name) {
+            for (key in name) {
+                window.restrictSlotsLogged[key] = true;
+            }
+        }
+    };
+/** /remove for production */
 
     // On ne remplace pas une version déjà chargée de EasyPrototype.
     // Donc si plusieurs versions sont chargées, c'est la première chargée qui est utilisée
