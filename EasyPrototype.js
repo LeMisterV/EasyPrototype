@@ -1,4 +1,4 @@
-(function (window, undef) {
+(function (global, undef) {
 
     /** collect all slots owned by an object (none of the slots inherited)
      *
@@ -112,12 +112,12 @@
     }
 
     /** just need to have a global function with this name for debug. To remove for production. */
-    window.nologSlotDefinition = function() {};
+    global.nologSlotDefinition = function() {};
 
     /** Add to a method a call to 'logSlotDefinition'. This way we can log every method execution */
     function getLogLayer(key, func) {
         function logLayer() {
-            if('logSlotDefinition' in this) {
+            if('logSlotDefinition' in this && global.restrictSlotsLogged === 'all') {
                 this.logSlotDefinition(key);
             }
             return func.apply(this, arguments);
@@ -395,11 +395,11 @@
         // destroy existe on met en place le processus de destruction au window.unload
         if ((!instance || instance === this) && 'destroy' in this) {
             // On window unload, call destroy method
-            if (window.addEventListener) {
-                window.addEventListener('unload', this.callback('destroy'), false);
+            if (global.addEventListener) {
+                global.addEventListener('unload', this.callback('destroy'), false);
             }
-            else if (window.attachEvent) {
-                window.attachEvent('onunload', this.callback('destroy'));
+            else if (global.attachEvent) {
+                global.attachEvent('onunload', this.callback('destroy'));
             }
         }
 
@@ -579,7 +579,7 @@
             return function lazyCallback() {
                 var args = arguments;
 
-                window.setTimeout(function () {
+                global.setTimeout(function () {
                     func.apply(obj, args);
                 }, 0);
             };
@@ -713,7 +713,9 @@
         },
 
         logSlotDefinition : function logSlotDefinition(slotName) {
-            if(!('console' in window) || !('debug' in console) || ('restrictSlotsLogged' in window && !(slotName in window.restrictSlotsLogged))) {
+            if(!('console' in global) ||
+               !('debug' in console) ||
+               ('restrictSlotsLogged' in global && global.restrictSlotsLogged !== 'all' && !(slotName in global.restrictSlotsLogged))) {
                 return;
             }
 
@@ -744,20 +746,23 @@
     EasyPrototype.createClass = createClass;
 /** remove for production */
     EasyPrototype.restrictSlots = function restrictSlots(name) {
-        window.restrictSlotsLogged = window.restrictSlotsLogged || {};
+        global.restrictSlotsLogged = global.restrictSlotsLogged || {};
 
-        if (typeof name === 'string') {
-            window.restrictSlotsLogged[name] = true;
+        if (name === 'all') {
+            global.restrictSlotsLogged = 'all';
+        }
+        else if (typeof name === 'string') {
+            global.restrictSlotsLogged[name] = true;
         }
         else if (name instanceof Array) {
             var len = name.length;
             while (len--) {
-                window.restrictSlotsLogged[name[len]] = true;
+                global.restrictSlotsLogged[name[len]] = true;
             }
         }
         else if(name) {
             for (key in name) {
-                window.restrictSlotsLogged[key] = true;
+                global.restrictSlotsLogged[key] = true;
             }
         }
     };
@@ -765,5 +770,5 @@
 
     // On ne remplace pas une version déjà chargée de EasyPrototype.
     // Donc si plusieurs versions sont chargées, c'est la première chargée qui est utilisée
-    window.EasyPrototype = window.EasyPrototype || EasyPrototype;
+    global.EasyPrototype = global.EasyPrototype || EasyPrototype;
 }(this));
