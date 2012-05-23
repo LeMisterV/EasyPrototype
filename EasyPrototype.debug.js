@@ -227,4 +227,12 @@
         }
     };
 
+    var originalCallback = global.EasyPrototype.prototype.callback;
+
+    global.EasyPrototype.prototype.callback = function callbackDebug(methodName) {
+        var result = originalCallback.apply(this, arguments);
+        result.original = this[methodName];
+        return result;
+    };
+
 }(this));
