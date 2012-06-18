@@ -1,213 +1,208 @@
-(function(global, document, undef) {
+(function(global, document, define, undef) {
+define('FileInjection', ['EasyPrototype', 'EventsManager'], function(EasyPrototype, EventsManager) {
 
-    var ENV = document.location.hostname.replace(/^((?:pp|dev|intg)(\.|$))?.*$/, '$1'),
+    var ENV = document.location.hostname.replace(/^((?:pp|dev|intg|local)(\.|$))?.*$/, '$1');
 
-        FileInjection = global.FileInjection = global.FileInjection || global.EasyPrototype.createProtoClass(
-            'FileInjection',
-            global.EventsManager,
-            {
-            instances : {},
+    var FileInjection = EasyPrototype.createProtoClass(
+        'FileInjection',
+        EventsManager,
+        {
+        instances : {},
 
-            injectTimeout : 2000,
+        injectTimeout : 2000,
 
-            defaultLoadSupposition : false,
+        defaultLoadSupposition : false,
 
-            env : ENV,
+        staticDomain : 'http://' + ENV + 'static.francetv.fr',
 
-            staticDomain : {
-                dev : 'http://dev.static.francetelevisions.fr'
-            }[ENV] || 'http://' + ENV + 'www.francetelevisions.fr',
+        getUid : function(params) {
+            return (params.type || this.type) + params.url + params.charset + (params.document || document).location.href;
+        },
 
-            getUid : function(params) {
-                return (params.type || this.type) + params.url + params.charset + (params.document || document).location.href;
-            },
+        getInstance : function getInstance(params) {
+            if ('multiload' in params && params.multiload === true) {
+                return;
+            }
 
-            getInstance : function getInstance(params) {
-                if ('multiload' in params && params.multiload === true) {
-                    return;
-                }
+            var instance = this.instances[this.getUid(params)];
 
-                var instance = this.instances[this.getUid(params)];
-
-                if (instance) {
-                    if ('onload' in params && typeof params.onload === 'function') {
-                        instance.addEventListener('load', params.onload);
-                    }
-                    if ('onerror' in params && typeof params.onerror === 'function') {
-                        instance.addEventListener('error', params.onerror);
-                    }
-                    if ('loadControl' in params && typeof params.loadControl === 'function') {
-                        instance.registerLoadControl(params.loadControl);
-                    }
-                }
-
-                return instance;
-            },
-
-            init : function init(params) {
-                this.execSuper('init');
-
-                this.multiload = params.multiload === true;
-                if (!this.multiload) {
-                    this.instances[this.getUid(params)] = this;
-                }
-
-                this.url = FileInjection.getStaticUrl(params.url);
-
-                this.document = params.document || document;
-
-                // On control que l'on peut manipuler le DOM du document en question (xDomain policy par exemple)
-                try {
-                    this.document.getElementsByTagName('BODY');
-                }
-                catch (e) {
-                    this.document = document;
-                }
-
-                if ('type' in params) {
-                    this.type = params.type;
-                }
-
-                if ('charset' in params) {
-                    this.charset = params.charset;
-                }
-
-                if ('timeout' in params) {
-                    this.injectTimeout = params.timeout;
-                }
-
+            if (instance) {
                 if ('onload' in params && typeof params.onload === 'function') {
-                    this.addEventListener('load', params.onload);
+                    instance.addEventListener('load', params.onload);
                 }
-
                 if ('onerror' in params && typeof params.onerror === 'function') {
-                    this.addEventListener('error', params.onerror);
+                    instance.addEventListener('error', params.onerror);
                 }
-
                 if ('loadControl' in params && typeof params.loadControl === 'function') {
-                    this.registerLoadControl(params.loadControl);
-                }
-
-                this.createNode();
-
-                this.loadTimer = global.setTimeout(this.callback('loadHandler', this.defaultLoadSupposition), this.injectTimeout);
-
-                this.injectNode();
-            },
-
-            injectNode : function injectNode() {
-                if (!this.controlLoad(false)) {
-                    this.injectElement(this.node);
-                }
-                else {
-                    throw new Error('Tentative de double chargement du fichier : ' + this.url);
-                }
-            },
-
-            injectElement : function injectElement(elem) {
-                (this.document.getElementsByTagName('HEAD')[0] ||
-                 this.document.getElementsByTagName('BODY')[0] ||
-                 this.document.documentElement)
-                    .appendChild(elem);
-            },
-
-            registerLoadControl : function registerLoadControl(loadControl) {
-                var unik = true,
-                    i;
-
-                if (!('loadControls' in this)) {
-                    this.loadControls = [loadControl];
-                }
-                else {
-                    i = this.loadControls.length;
-
-                    while (unik && i--) {
-                        unik = this.loadControls !== loadControl;
-                    }
-
-                    if (unik) {
-                        this.loadControls.push(loadControl);
-                    }
-                }
-            },
-
-            controlLoad : function controlLoad(def) {
-                if (!('loadControls' in this)) {
-                    return def;
-                }
-
-                var loaded = true,
-                    i = this.loadControls.length;
-
-                while (loaded && i--) {
-                    loaded = !!this.loadControls[i].call(this);
-                }
-
-                return loaded;
-            },
-
-            loadHandler : function loadHandler(supposed) {
-                if ('loadTimer' in this) {
-                    global.clearTimeout(this.loadTimer);
-                    delete this.loadTimer;
-                }
-
-                if (!('loaded' in this) || this.loaded !== true) {
-                    this.loaded = this.controlLoad(supposed);
-
-                    this.events.trigger(this.loaded ? 'load' : 'error');
-                }
-            },
-
-            __statics__ : {
-                patternSelfPath : /^(https?:\/\/[^\/]+)?\/layoutftv\/arches\/common\/javascripts\//,
-            //    patternSelfPath = /jsLibs/;
-
-                searchStaticDomain : function searchStaticDomain(tagName, attrName) {
-                    var tagList = document.getElementsByTagName(tagName),
-                        matches,
-                        i = tagList.length;
-
-                    while (i--) {
-                        matches = FileInjection.patternSelfPath.exec(tagList[i].getAttribute(attrName));
-                        if (matches) {
-                            FileInjection.prototype.staticDomain = global.staticDomain = matches[1] ||
-                                document.location.protocol + '//' + document.location.hostname;
-                            return true;
-                        }
-                    }
-                    return false;
-                },
-
-                onWindowLoad : function onWindowLoad() {
-                    if (global.staticDomain) {
-                        return;
-                    }
-
-                    var tagsTypes = {
-                            script : 'src',
-                            link : 'href'
-                        },
-                        key;
-
-                    for (key in tagsTypes) {
-                        if (FileInjection.searchStaticDomain(key, tagsTypes[key])) {
-                            break;
-                        }
-                    }
-                },
-
-                getStaticUrl : function getStaticUrl(url) {
-                    if (url && url.substr(0, 1) === '/') {
-                        url = FileInjection.prototype.staticDomain + url;
-                    }
-
-                    return url;
+                    instance.registerLoadControl(params.loadControl);
                 }
             }
-        }, [
-            'createNode'
-        ]);
+
+            return instance;
+        },
+
+        init : function init(params) {
+            this.execSuper('init');
+
+            this.multiload = params.multiload === true;
+            if (!this.multiload) {
+                this.instances[this.getUid(params)] = this;
+            }
+
+            if (params.isStatic !== false) {
+                this.url = FileInjection.getStaticUrl(params.url);
+            }
+
+            this.document = params.document || document;
+
+            // On control que l'on peut manipuler le DOM du document en question (xDomain policy par exemple)
+            try {
+                this.document.getElementsByTagName('BODY');
+            }
+            catch (e) {
+                this.document = document;
+            }
+
+            if ('type' in params) {
+                this.type = params.type;
+            }
+
+            if ('charset' in params) {
+                this.charset = params.charset;
+            }
+
+            if ('timeout' in params) {
+                this.injectTimeout = params.timeout;
+            }
+
+            if ('onload' in params && typeof params.onload === 'function') {
+                this.addEventListener('load', params.onload);
+            }
+
+            if ('onerror' in params && typeof params.onerror === 'function') {
+                this.addEventListener('error', params.onerror);
+            }
+
+            if ('loadControl' in params && typeof params.loadControl === 'function') {
+                this.registerLoadControl(params.loadControl);
+            }
+
+            this.createNode();
+
+            this.loadTimer = global.setTimeout(this.callback('loadHandler', this.defaultLoadSupposition), this.injectTimeout);
+
+            this.injectNode();
+        },
+
+        injectNode : function injectNode() {
+            if (!this.controlLoad(false)) {
+                this.injectElement(this.node);
+            }
+            else {
+                throw new Error('Tentative de double chargement du fichier : ' + this.url);
+            }
+        },
+
+        injectElement : function injectElement(elem) {
+            (this.document.getElementsByTagName('HEAD')[0] ||
+             this.document.getElementsByTagName('BODY')[0] ||
+             this.document.documentElement)
+                .appendChild(elem);
+        },
+
+        registerLoadControl : function registerLoadControl(loadControl) {
+            var unik = true,
+                i;
+
+            if (!('loadControls' in this)) {
+                this.loadControls = [loadControl];
+            }
+            else {
+                i = this.loadControls.length;
+
+                while (unik && i--) {
+                    unik = this.loadControls !== loadControl;
+                }
+
+                if (unik) {
+                    this.loadControls.push(loadControl);
+                }
+            }
+        },
+
+        controlLoad : function controlLoad(def) {
+            if (!('loadControls' in this)) {
+                return def;
+            }
+
+            var loaded = true,
+                i = this.loadControls.length;
+
+            while (loaded && i--) {
+                loaded = !!this.loadControls[i].call(this);
+            }
+
+            return loaded;
+        },
+
+        loadHandler : function loadHandler(supposed) {
+            if ('loadTimer' in this) {
+                global.clearTimeout(this.loadTimer);
+                delete this.loadTimer;
+            }
+
+            if (!('loaded' in this) || this.loaded !== true) {
+                this.loaded = this.controlLoad(supposed);
+
+                this.events.trigger(this.loaded ? 'load' : 'error');
+            }
+        },
+
+        __statics__ : {
+            patternSelfPath : /^(https?:\/\/[^\/]+)?\/layoutftv\/arches\/common\/javascripts\//,
+        //    patternSelfPath = /jsLibs/;
+
+            searchStaticDomain : function searchStaticDomain(tagName, attrName) {
+                var tagList = document.getElementsByTagName(tagName),
+                    matches,
+                    i = tagList.length;
+
+                while (i--) {
+                    matches = FileInjection.patternSelfPath.exec(tagList[i].getAttribute(attrName));
+                    if (matches) {
+                        FileInjection.prototype.staticDomain = matches[1] ||
+                            document.location.protocol + '//' + document.location.hostname;
+                        return true;
+                    }
+                }
+                return false;
+            },
+
+            getStaticUrl : function getStaticUrl(url) {
+                if (url && url.substr(0, 1) === '/') {
+                    url = FileInjection.prototype.staticDomain + url;
+                }
+
+                return url;
+            },
+
+            onWindowLoad : function onWindowLoad() {
+                var tagsTypes = {
+                        script : 'src',
+                        link : 'href'
+                    },
+                    key;
+
+                for (key in tagsTypes) {
+                    if (FileInjection.searchStaticDomain(key, tagsTypes[key])) {
+                        break;
+                    }
+                }
+            }
+        }
+    }, [
+        'createNode'
+    ]);
 
     if (global.addEventListener) {
         global.addEventListener('load', FileInjection.onWindowLoad, false);
@@ -218,8 +213,10 @@
 
     FileInjection.onWindowLoad();
 
-
-    global.ScriptInjection = global.ScriptInjection || global.EasyPrototype.createClass('ScriptInjection', FileInjection, {
+    return FileInjection;
+});
+define('ScriptInjection', ['EasyPrototype', 'FileInjection'], function(EasyPrototype, FileInjection) {
+    return EasyPrototype.createClass('ScriptInjection', FileInjection, {
         type : 'text/javascript',
 
         createNode : function createNode() {
@@ -255,8 +252,9 @@
             this.loadHandler(true);
         }
     });
-
-    global.StyleInjection = global.StyleInjection || global.EasyPrototype.createClass('StyleInjection', FileInjection, {
+});
+define('StyleInjection', ['EasyPrototype', 'FileInjection'], function(EasyPrototype, FileInjection) {
+    return EasyPrototype.createClass('StyleInjection', FileInjection, {
         type : 'text/css',
 
         injectTimeout : 1000,
@@ -297,5 +295,5 @@
             this.execSuper('loadHandler', arguments);
         }
     });
-
-}(this, this.document));
+});
+}(this, this.document, this.define));

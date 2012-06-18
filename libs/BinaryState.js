@@ -1,14 +1,5 @@
-(function (global, Error, undef) {
-    (function (dep) {
-        for (var i in dep) {
-            if (!dep[i]) {
-                throw new Error('Dépendence non satisfaite : ' + i);
-            }
-        }
-    }({
-        EasyPrototype       : !!global.EasyPrototype,
-        EventsManager       : !!global.EventsManager
-    }));
+(function (define, undef) {
+define('BinaryState', ['EasyPrototype', 'EventsManager'], function(EasyPrototype, EventsManager) {
 
     var eventsNames = {
             onChange    : 'changed',
@@ -16,7 +7,7 @@
             onFalse     : 'toFalse'
         },
 
-        BinaryStatePrototype = EasyPrototype.createProtoClass('BinaryStatePrototype', global.EventsManager, {
+        BinaryStatePrototype = EasyPrototype.createProtoClass('BinaryStatePrototype', EventsManager, {
             init : function init(initialState) {
                 this.changing = false;
 
@@ -63,7 +54,7 @@
             }
         });
 
-    global.BinaryState = global.BinaryState || EasyPrototype.createClass('BinaryState', BinaryStatePrototype, {
+    return EasyPrototype.createClass('BinaryState', BinaryStatePrototype, {
         init : function init() {
             this.execSuper('init', arguments);
 
@@ -75,5 +66,5 @@
             this.setValue(!this.value, callback);
         }
     });
-
-}(this, this.Error));
+});
+}(this.define));

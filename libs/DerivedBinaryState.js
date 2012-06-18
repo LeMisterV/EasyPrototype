@@ -1,14 +1,5 @@
-(function (global, Error, undef) {
-    (function (dep) {
-        for (var i in dep) {
-            if (!dep[i]) {
-                throw new Error('Dépendence non satisfaite : ' + i);
-            }
-        }
-    }({
-        EasyPrototype       : !!global.EasyPrototype,
-        BinaryState         : !!global.BinaryState
-    }));
+(function (define, Error, undef) {
+define('DerivedBinaryState', ['EasyPrototype', 'BinaryState'], function(EasyPrototype, BinaryState) {
 
     var operators = {
             AND : function (a, b) {
@@ -22,7 +13,7 @@
                 }
         };
 
-    global.DerivedBinaryState = global.DerivedBinaryState || EasyPrototype.createClass('DerivedBinaryState', BinaryState.prototype.constructor, {
+    return EasyPrototype.createClass('DerivedBinaryState', BinaryState.prototype.constructor, {
         init : function init() {
             var i, args;
 
@@ -125,4 +116,5 @@
             this.setValue(value);
         }
     });
-}(this, this.Error));
+});
+}(this.define, this.Error));

@@ -1,4 +1,5 @@
-(function (global, undef) {
+(function (global, define, undef) {
+define('EasyPrototype', [], function() {
 
     var tools = {
 
@@ -669,7 +670,6 @@
         }
     });
 
-    // On ne remplace pas une version déjà chargée de EasyPrototype.
-    // Donc si plusieurs versions sont chargées, c'est la première chargée qui est utilisée
-    global.EasyPrototype = global.EasyPrototype || EasyPrototype;
-}(this));
+    return EasyPrototype;
+});
+}(this, this.define));

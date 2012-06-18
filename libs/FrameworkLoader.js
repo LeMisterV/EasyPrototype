@@ -1,17 +1,15 @@
-(function (global, $, EasyPrototype, undef) {
-    if (EasyPrototype === undef) {
-        throw new global.Error('Dépendence non satisfaite : EasyPrototype');
-    }
+(function(global, define, Error, undef) {
+define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquery'], function(EasyPrototype, EventsManager, ScriptInjection, $) {
 
-    var framework = global.framework = global.framework || {
+    var framework = {
             register : function() {
                 var args = [].slice.call(arguments).reverse();
                 args.push(FrameworkLoader);
-                global.EasyPrototype.createClass.apply(this, args.reverse());
+                EasyPrototype.createClass.apply(this, args.reverse());
             }
         },
 
-        FrameworkLoader = framework.LoaderPrototype = framework.LoaderPrototype || global.EasyPrototype.createProtoClass(
+        FrameworkLoader = framework.LoaderPrototype = EasyPrototype.createProtoClass(
             'FrameworkLoader',
             {
             autoLoad : false,
@@ -20,7 +18,7 @@
                 var name = this.className;
 
                 if (framework[name]) {
-                    throw new global.Error('Double chargement du framework ' + name);
+                    throw new Error('Double chargement du framework ' + name);
                 }
 
                 framework[name] = new this();
@@ -103,7 +101,7 @@
                     file.charset = this.scriptCharset;
                 }
 
-                new global.ScriptInjection(file);
+                new ScriptInjection(file);
             },
 
             onReady : function onReady() {
@@ -115,7 +113,7 @@
 
                 paramsControl : /^\s*\{\s*((framework)?params)\s*:\s*\{(.|\s)*\}\s*\}\s*$/i,
 
-                events : new global.EventsManager(),
+                events : new EventsManager(),
 
                 mergeRecursive : function mergeRecursive(obj1, obj2) {
                     var p;
@@ -205,4 +203,6 @@
 
     framework.LoaderPrototype = FrameworkLoader;
 
-}(this, this.jQuery, this.EasyPrototype));
+    return framework;
+});
+}(this, this.define, this.Error));

@@ -1,8 +1,5 @@
-(function (global, Array, Error, undef) {
-
-    if (global.EasyPrototype === undef) {
-        throw new Error('Dépendence non satisfaite : EasyPrototype');
-    }
+(function (global, define, Array, Error, undef) {
+define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
 
     function getConvertionFunction(relations) {
         return function (type) {
@@ -40,7 +37,7 @@
         }
     }
 
-    var EventListener = global.EasyPrototype.createClass('EventListener', {
+    var EventListener = EasyPrototype.createClass('EventListener', {
         init : function init(action, iterations, rattrapage, reseter) {
             if (typeof action !== 'function') {
                 throw new Error('Event listener must be a function');
@@ -94,7 +91,7 @@
         }
     }),
 
-    EventExecution = global.EasyPrototype.createClass('EventExecution', {
+    EventExecution = EasyPrototype.createClass('EventExecution', {
         init : function init(event, listeners, args) {
             var i;
 
@@ -109,9 +106,7 @@
                 continuer   : this.callback('onListenerContinuer')
             }];
 
-            for (i = 0; i < args.length; i++) {
-                this.params.push(args[i]);
-            }
+            this.params.push.apply(this.params, args);
 
             this.timeout = global.setTimeout(this.callback('execute'), 0);
         },
@@ -171,7 +166,7 @@
                 delete this._callback;
 
                 if (!('event' in this && 'manager' in this.event)) {
-                    throw new global.Error('Problème de destruction prématurée d\'un objet Event de EventsManager');
+                    throw new Error('Problème de destruction prématurée d\'un objet Event de EventsManager');
                 }
 
                 subject = this.event.manager.subject;
@@ -186,7 +181,7 @@
             // Ne peut pas être exécuté après la destruction de l'instance
             if ('event' in this) {
                 if ('_callback' in this) {
-                    throw new global.Error('Une fonction de callback a déjà été enregistré pour cette exécution d\'événement');
+                    throw new Error('Une fonction de callback a déjà été enregistré pour cette exécution d\'événement');
                 }
                 this._callback = cbk;
                 this.execCallback();
@@ -234,7 +229,7 @@
         }
     }),
 
-    Event = global.EasyPrototype.createClass('Event', {
+    Event = EasyPrototype.createClass('Event', {
         init : function init(manager, name) {
             this.name = name;
             this.manager = manager;
@@ -363,7 +358,7 @@
         }
     }),
 
-    EventsManagerInterface = global.EventsManager = global.EventsManager || global.EasyPrototype.createClass(
+    EventsManagerInterface = EasyPrototype.createClass(
         'EventsManagerInterface',
         {
         getInstance : function getInstance() {
@@ -418,7 +413,7 @@
         }
     }),
 
-    EventsManager = global.EasyPrototype.createClass('EventsManager', EventsManagerInterface, {
+    EventsManager = EasyPrototype.createClass('EventsManager', EventsManagerInterface, {
         /** Surcharge getInstance
          *
          * On surcharge getInstance pour que la méthode getInstance de EventsManagerInterface ne
@@ -704,4 +699,6 @@
         }
     });
 
-}(this, this.Array, this.Error));
+    return EventsManagerInterface;
+});
+}(this, this.define, this.Array, this.Error));
