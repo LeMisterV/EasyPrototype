@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>tests EasyPrototype</title>
+
+<link rel="stylesheet" type="text/css" href="../externe/jasmine-1.0.0/jasmine.css">
+<script type="text/javascript" src="../externe/jasmine-1.0.0/jasmine.js"></script>
+<script type="text/javascript" src="../externe/jasmine-1.0.0/jasmine-html.js"></script>
+<script type="text/javascript" src="../externe/jasmine-1.0.0/jasmine.console_reporter.js"></script>
+
+
+<script type="text/javascript" src="libs/define.js"></script>
+<script type="text/javascript" src="libs/EasyPrototype.js"></script>
+<script type="text/javascript" src="libs/EasyEvents.js"></script>
+<script type="text/javascript" src="libs/EventsManager.js"></script>
+<script type="text/javascript" src="libs/BinaryState.js"></script>
+<script type="text/javascript" src="libs/DerivedBinaryState.js"></script>
+<script type="text/javascript" src="libs/FileInjection.js"></script>
+<script type="text/javascript" src="libs/FrameworkLoader.js"></script>
+
+
+<script type="text/javascript" src="tests/define.js"></script>
+<script type="text/javascript" src="tests/EasyPrototype.js"></script>
+<script type="text/javascript" src="tests/EasyEvents.js"></script>
+<body>
+    <script type="text/javascript">
+      jasmine.getEnv().addReporter(new jasmine.TrivialReporter());
+      jasmine.getEnv().addReporter(new jasmine.ConsoleReporter());
+      jasmine.getEnv().execute();
+    </script>
+</body>
