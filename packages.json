@@ -1,0 +1,48 @@
+{
+    "packages" : {
+        "default" : {
+            "#EasyPrototype : base" : true
+        },
+
+        "base" : {
+            "EasyPrototype/libs/define.js"                                             : "utf-8",
+            "EasyPrototype/libs/EasyPrototype.js"                                         : "utf-8"
+        },
+
+        "EventsManager" : {
+            "#EasyPrototype : base" : true,
+
+            "EasyPrototype/libs/EventsManager.js"                                         : "utf-8"
+        },
+
+        "BinaryState" : {
+            "#EasyPrototype : EventsManager" : true,
+
+            "EasyPrototype/libs/BinaryState.js"                                            : "utf-8"
+        },
+
+        "BinaryStates" : {
+            "#EasyPrototype : BinaryState" : true,
+
+            "EasyPrototype/libs/DerivedBinaryState.js"                                     : "utf-8"
+        },
+
+        "FileInjection" : {
+            "#EasyPrototype : EventsManager" : true,
+
+            "EasyPrototype/libs/FileInjection.js"                                     : "utf-8"
+        },
+
+        "FrameworkLoader" : {
+            "#EasyPrototype : FileInjection" : true,
+
+            "EasyPrototype/libs/FrameworkLoader.js"                                     : "utf-8"
+        },
+
+        "debug" : {
+            "#EasyPrototype : default" : true,
+
+            "EasyPrototype/libs/EasyPrototype.debug.js"                                   : "utf-8"
+        }
+    }
+}

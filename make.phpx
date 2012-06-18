@@ -1,0 +1,10 @@
+<?php
+require('/share/tools/jsPackTools/makeJsPackage.php');
+
+makeJsPackage(
+    jsPackage::getFiles('EventsManager'),
+    PATH_JS_PROD . 'EventsManager.js',
+    null,
+    'utf-8'
+);
+
