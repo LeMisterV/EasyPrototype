@@ -13,10 +13,15 @@
                 }
             }
 
-            result = constructor.apply(global, dep);
+            define.defined[name] = constructor.apply(global, dep);
 
-            global[name] = define.defined[name] = result;
+            if (!define.noglobal) {
+                global[name] = define.defined[name];
+            }
         }
+
+        delete define.noglobal;
+        return define.defined[name];
     }
 
     define.defined = {};
