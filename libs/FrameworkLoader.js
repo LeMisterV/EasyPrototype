@@ -18,14 +18,15 @@ define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquer
                 var name = this.className;
 
                 if (framework[name]) {
-                    throw new Error('Double chargement du framework ' + name);
+                    global.console && global.console.error && global.console.error(new Error('Double chargement du framework ' + name));
                 }
+                else {
+                    framework[name] = new this();
 
-                framework[name] = new this();
-
-                // Raccourci en tant que plugin jQuery (deprecated)
-                if ($ !== undef) {
-                    $[name] = framework[name].callback('exec');
+                    // Raccourci en tant que plugin jQuery (deprecated)
+                    if ($ !== undef) {
+                        $[name] = framework[name].callback('exec');
+                    }
                 }
             },
 
