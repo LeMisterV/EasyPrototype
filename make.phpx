@@ -5,6 +5,7 @@ makeJsPackage(
     jsPackage::getFiles('EventsManager'),
     PATH_JS_PROD . 'EventsManager.js',
     null,
-    'utf-8'
+    'utf-8',
+    'EventsManager'
 );
 
