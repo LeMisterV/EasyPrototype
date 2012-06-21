@@ -2,8 +2,8 @@
     function define(moduleName, deps, constructor) {
         var depName;
         var len = deps.length;
-        var commonStock = define.defined.default;
-        var context = define.context || 'default';
+        var commonStock = define.defined.none;
+        var context = define.context || 'none';
 
         if (!(context in define.defined)) {
             define.defined[context] = {};
@@ -45,7 +45,7 @@
         return context[moduleName];
     }
 
-    define.defined = {default : {}};
+    define.defined = {none : {}};
 
     global.define = global.define || define;
 }(this));
