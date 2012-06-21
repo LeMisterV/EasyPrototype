@@ -1,30 +1,51 @@
-﻿(function(global) {
-    function define(name, dep, constructor) {
-        var result,
-            len = dep.length;
+﻿(function(global, undef) {
+    function define(moduleName, deps, constructor) {
+        var depName;
+        var len = deps.length;
+        var commonStock = define.defined.default;
+        var context = define.context || 'default';
 
-        if (!(name in define.defined)) {
-            while (len--) {
-                if (dep[len] === 'jquery') {
-                    dep[len] = global.jQuery;
+        if (!(context in define.defined)) {
+            define.defined[context] = {};
+        }
+
+        context = define.defined[context];
+
+        if (!(moduleName in context)) {
+            try {
+                while (len--) {
+                    depName = deps[len];
+                    if (depName === 'jquery') {
+                        deps[len] = global.jQuery;
+                    }
+                    else {
+                        deps[len] = context[depName] || commonStock[depName] || global[depName];
+                        if (deps[len] === undef) {
+                            throw new Error(moduleName + ' : Unavailable dependency "' + depName + '"');
+                        }
+                    }
                 }
-                else {
-                    dep[len] = define.defined[dep[len]];
+
+                context[moduleName] = constructor.apply(global, deps);
+
+                if (!(moduleName in commonStock)) {
+                    commonStock[moduleName] = context[moduleName];
+                }
+
+                if (!define.noglobal && !(moduleName in global)) {
+                    global[moduleName] = context[moduleName];
                 }
             }
-
-            define.defined[name] = constructor.apply(global, dep);
-
-            if (!define.noglobal) {
-                global[name] = define.defined[name];
+            catch(e) {
+                global.console && global.console.error && global.console.error(e);
             }
         }
 
         delete define.noglobal;
-        return define.defined[name];
+        return context[moduleName];
     }
 
-    define.defined = {};
+    define.defined = {default : {}};
 
     global.define = global.define || define;
 }(this));
