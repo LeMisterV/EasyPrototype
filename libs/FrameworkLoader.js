@@ -3,9 +3,11 @@ define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquer
 
     var framework = {
             register : function() {
+                var Constructor;
                 var args = [].slice.call(arguments).reverse();
                 args.push(FrameworkLoader);
-                EasyPrototype.createClass.apply(this, args.reverse());
+                Constructor = EasyPrototype.createClass.apply(this, args.reverse());
+                return framework[Constructor.className];
             }
         },
 
