@@ -170,8 +170,8 @@ define('FileInjection', ['EasyPrototype', 'EventsManager'], function(EasyPrototy
                 while (i--) {
                     matches = FileInjection.patternSelfPath.exec(tagList[i].getAttribute(attrName));
                     if (matches) {
-                        FileInjection.prototype.staticDomain = matches[1] ||
-                            document.location.protocol + '//' + document.location.hostname;
+//                        FileInjection.prototype.staticDomain = matches[1] ||
+//                            document.location.protocol + '//' + document.location.hostname;
                         return true;
                     }
                 }
