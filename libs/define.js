@@ -1,4 +1,4 @@
-﻿(function(global, undef) {
+(function(global, undef) {
     function define(moduleName, deps, constructor) {
         var depName;
         var len = deps.length;
