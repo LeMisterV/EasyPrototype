@@ -1,4 +1,4 @@
-(function (global, define, undef) {
+(function (define, setTimeout, undef) {
 define('EasyPrototype', [], function() {
 
     var tools = {
@@ -543,7 +543,7 @@ define('EasyPrototype', [], function() {
             return function lazyCallback() {
                 var args = arguments;
 
-                global.setTimeout(function () {
+                setTimeout(function () {
                     func.apply(obj, args);
                 }, 0);
             };
@@ -672,4 +672,4 @@ define('EasyPrototype', [], function() {
 
     return EasyPrototype;
 });
-}(this, this.define));
+}(define, this.setTimeout));

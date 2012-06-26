@@ -1,4 +1,4 @@
-(function (global, define, Array, Error, undef) {
+(function (define, Array, Error, setTimeout, clearTimeout, undef) {
 define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
 
     function getConvertionFunction(relations) {
@@ -108,7 +108,7 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
 
             this.params.push.apply(this.params, args);
 
-            this.timeout = global.setTimeout(this.callback('execute'), 0);
+            this.timeout = setTimeout(this.callback('execute'), 0);
         },
 
         destroy : function destroy() {
@@ -116,7 +116,7 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
             // Cela se produit si on détruit l'exécution juste après l'appel d'exécution.
             // Est-ce une bonne chose... cela reste à controler, mais comment ?
             if ('timeout' in this) {
-                global.clearTimeout(this.timeout);
+                clearTimeout(this.timeout);
                 delete this.timeout;
 
                 if ('listeners' in this) {
@@ -143,7 +143,7 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
                 listener.action.apply(this.event.manager.subject, this.params);
             }
             catch (e) {
-                if ('console' in global && 'error' in global.console) {
+                if (typeof console !== 'undefined' && 'error' in console) {
                     console.error(e);
                 }
             }
@@ -171,7 +171,7 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
 
                 subject = this.event.manager.subject;
 
-                global.setTimeout(function () {
+                setTimeout(function () {
                     cbk.call(subject);
                 }, 0);
             }
@@ -287,7 +287,7 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
             this.lastExecution = new EventExecution(this, this.listeners.slice(), args);
 
             if (!('cleaningTimeout' in this)) {
-                this.cleaningTimeout = global.setTimeout(this.callback('cleanListeners'), 10);
+                this.cleaningTimeout = setTimeout(this.callback('cleanListeners'), 10);
             }
 
             return this.lastExecution;
@@ -337,7 +337,7 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
                         this.listeners[i].reseter(this.name);
                     }
                     catch (e) {
-                        if ('console' in global && 'error' in global.console) {
+                        if (typeof console !== 'undefined' && 'error' in console) {
                             console.error(e);
                         }
                     }
@@ -387,7 +387,9 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
 
         addEventListener : function addEventListener() {
             if (!('events' in this)) {
-                console.error(this, arguments, 'manipulation des événements d\'un objet détruit');
+                if (typeof console !== 'undefined' && 'error' in console) {
+                    console.error(this, arguments, 'manipulation des événements d\'un objet détruit');
+                }
             }
             else {
                 return this.events.addEventListener.apply(this.events, arguments);
@@ -396,7 +398,9 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
 
         addEventListeners : function addEventListeners() {
             if (!('events' in this)) {
-                console.error(this, arguments, 'manipulation des événements d\'un objet détruit');
+                if (typeof console !== 'undefined' && 'error' in console) {
+                    console.error(this, arguments, 'manipulation des événements d\'un objet détruit');
+                }
             }
             else {
                 return this.events.addEventListeners.apply(this.events, arguments);
@@ -405,7 +409,9 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
 
         unbind : function unbind() {
             if (!('events' in this)) {
-                console.error(this, arguments, 'manipulation des événements d\'un objet détruit');
+                if (typeof console !== 'undefined' && 'error' in console) {
+                    console.error(this, arguments, 'manipulation des événements d\'un objet détruit');
+                }
             }
             else {
                 return this.events.unbind.apply(this.events, arguments);
@@ -701,4 +707,4 @@ define('EventsManager', ['EasyPrototype'], function(EasyPrototype) {
 
     return EventsManagerInterface;
 });
-}(this, this.define, this.Array, this.Error));
+}(define, this.Array, this.Error, this.setTimeout, this.clearTimeout));

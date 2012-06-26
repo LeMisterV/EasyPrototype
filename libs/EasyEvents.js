@@ -1,4 +1,4 @@
-(function(global, define, undef) {
+(function(define, undef) {
 define('EasyEvents', ['EasyPrototype'], function(EasyPrototype) {
 
     var EventCallback = EasyPrototype.createClass('EventCallback', {
@@ -172,4 +172,4 @@ define('EasyEvents', ['EasyPrototype'], function(EasyPrototype) {
 
     return EasyEvents;
 });
-}(this, this.define));
+}(define));

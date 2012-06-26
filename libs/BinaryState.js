@@ -67,4 +67,4 @@ define('BinaryState', ['EasyPrototype', 'EventsManager'], function(EasyPrototype
         }
     });
 });
-}(this.define));
+}(define));
