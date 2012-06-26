@@ -32,7 +32,7 @@
                     commonStock[moduleName] = context[moduleName];
                 }
 
-                if (!define.noglobal && !(moduleName in global)) {
+                if (!define.noglobal && !(moduleName in global) && moduleName.indexOf('/') === -1) {
                     global[moduleName] = context[moduleName];
                 }
             }
