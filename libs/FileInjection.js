@@ -1,4 +1,4 @@
-(function(global, document, define, undef) {
+(function(global, define, document, setTimeout, clearTimeout, undef) {
 define('FileInjection', ['EasyPrototype', 'EventsManager'], function(EasyPrototype, EventsManager) {
 
     var ENV = document.location.hostname.replace(/^((?:pp|dev|intg|local)(\.|$))?.*$/, '$1');
@@ -89,7 +89,7 @@ define('FileInjection', ['EasyPrototype', 'EventsManager'], function(EasyPrototy
 
             this.createNode();
 
-            this.loadTimer = global.setTimeout(this.callback('loadHandler', this.defaultLoadSupposition), this.injectTimeout);
+            this.loadTimer = setTimeout(this.callback('loadHandler', this.defaultLoadSupposition), this.injectTimeout);
 
             this.injectNode();
         },
@@ -147,7 +147,7 @@ define('FileInjection', ['EasyPrototype', 'EventsManager'], function(EasyPrototy
 
         loadHandler : function loadHandler(supposed) {
             if ('loadTimer' in this) {
-                global.clearTimeout(this.loadTimer);
+                clearTimeout(this.loadTimer);
                 delete this.loadTimer;
             }
 
@@ -159,59 +159,17 @@ define('FileInjection', ['EasyPrototype', 'EventsManager'], function(EasyPrototy
         },
 
         __statics__ : {
-            patternSelfPath : /^(https?:\/\/[^\/]+)?\/layoutftv\/arches\/common\/javascripts\//,
-        //    patternSelfPath = /jsLibs/;
-
-            searchStaticDomain : function searchStaticDomain(tagName, attrName) {
-                var tagList = document.getElementsByTagName(tagName),
-                    matches,
-                    i = tagList.length;
-
-                while (i--) {
-                    matches = FileInjection.patternSelfPath.exec(tagList[i].getAttribute(attrName));
-                    if (matches) {
-                        FileInjection.prototype.staticDomain = matches[1] ||
-                            document.location.protocol + '//' + document.location.hostname;
-                        return true;
-                    }
-                }
-                return false;
-            },
-
             getStaticUrl : function getStaticUrl(url) {
                 if (url && url.substr(0, 1) === '/') {
                     url = FileInjection.prototype.staticDomain + url;
                 }
 
                 return url;
-            },
-
-            onWindowLoad : function onWindowLoad() {
-                var tagsTypes = {
-                        script : 'src',
-                        link : 'href'
-                    },
-                    key;
-
-                for (key in tagsTypes) {
-                    if (FileInjection.searchStaticDomain(key, tagsTypes[key])) {
-                        break;
-                    }
-                }
             }
         }
     }, [
         'createNode'
     ]);
-
-    if (global.addEventListener) {
-        global.addEventListener('load', FileInjection.onWindowLoad, false);
-    }
-    else if (global.attachEvent) {
-        global.attachEvent('onload', FileInjection.onWindowLoad);
-    }
-
-    FileInjection.onWindowLoad();
 
     return FileInjection;
 });
@@ -276,7 +234,7 @@ define('StyleInjection', ['EasyPrototype', 'FileInjection'], function(EasyProtot
 
         injectNode : function injectNode() {
             this.execSuper('injectNode');
-            this.checkLoadTimer = global.setTimeout(this.callback('checkLoad'), 100);
+            this.checkLoadTimer = setTimeout(this.callback('checkLoad'), 100);
         },
 
         checkLoad : function checkLoad() {
@@ -285,15 +243,15 @@ define('StyleInjection', ['EasyPrototype', 'FileInjection'], function(EasyProtot
                     this.loadHandler(true);
                 }
                 else if ('loadTimer' in this) {
-                    this.checkLoadTimer = global.setTimeout(this.callback('checkLoad'), 100);
+                    this.checkLoadTimer = setTimeout(this.callback('checkLoad'), 100);
                 }
             }
         },
 
         loadHandler : function loadHandler() {
-            global.clearTimeout(this.checkLoadTimer);
+            clearTimeout(this.checkLoadTimer);
             this.execSuper('loadHandler', arguments);
         }
     });
 });
-}(this, this.document, this.define));
+}(this, define, this.document, this.setTimeout, this.clearTimeout));

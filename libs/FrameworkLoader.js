@@ -1,4 +1,4 @@
-(function(global, define, Error, undef) {
+(function(global, define, Error, eval, setTimeout, undef) {
 define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquery'], function(EasyPrototype, EventsManager, ScriptInjection, $) {
 
     var framework = {
@@ -20,7 +20,9 @@ define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquer
                 var name = this.className;
 
                 if (framework[name]) {
-                    global.console && global.console.error && global.console.error(new Error('Double chargement du framework ' + name));
+                    if (typeof console !== 'undefined' && 'error' in console) {
+                        console.error(new Error('Double chargement du framework ' + name));
+                    }
                 }
                 else {
                     framework[name] = new this();
@@ -141,7 +143,7 @@ define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquer
 
                     if (txt && matches) {
                         try {
-                            global.eval(
+                            eval(
                                 'window.framework.LoaderPrototype.paramsReceiver = ' +
                                 txt
                             );
@@ -151,8 +153,8 @@ define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquer
                             }
                         }
                         catch(e) {
-                            if ('console' in global && 'error' in global.console) {
-                                global.console.error(e);
+                            if (typeof console !== 'undefined' && 'error' in console) {
+                                console.error(e);
                             }
                             return;
                         }
@@ -179,7 +181,7 @@ define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquer
                             .each(FrameworkLoader.collectScriptParams);
                     }
 
-                    global.setTimeout(
+                    setTimeout(
                         FrameworkLoader.events.callback('trigger', 'windowLoaded'),
                         FrameworkLoader.loadingDelay
                     );

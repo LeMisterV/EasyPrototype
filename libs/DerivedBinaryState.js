@@ -117,4 +117,4 @@ define('DerivedBinaryState', ['EasyPrototype', 'BinaryState'], function(EasyProt
         }
     });
 });
-}(this.define, this.Error));
+}(define, this.Error));
