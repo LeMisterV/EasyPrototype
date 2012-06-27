@@ -1,21 +1,15 @@
-EasyPrototype is a minimal javascript framwork.
+EasyPrototype is a simple javascript framwork
 
-The only goal of this script is to bring some simple tools to javascript's prototype model.
+The goal of this script is to bring some simple tools to javascript's prototype model.
 
 Those tools are :
 
-- easily create Class or ProtoClass (see ProtoClass definition after)
-- automagicaly call some methods :
-    - classSetup on Class creation
-    - getInstance at the begining of object construction (return an object instance if the object has already been created)
-    - init on object construction
-    - destroy on window unload
+-   easily creates Class
+-   automagicaly call some methods :
+    -   classSetup on Class creation
+    -   getInstance at the begining of object construction (return an object instance if the object has already been created)
+    -   init on object construction
+-   prototype inheritance
+-   parent prototype's method call (super)
+-   method callback (binding)
 
-- prototype inheritance
-- parent prototype's method call (super)
-- method callback (binding)
-
-
-About ProtoClass :
-
-What I call a ProtoClass is a Class created only to be inherited. It should probably be called abstract class....
