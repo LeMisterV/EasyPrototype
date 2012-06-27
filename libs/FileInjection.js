@@ -159,59 +159,17 @@ define('FileInjection', ['EasyPrototype', 'EventsManager'], function(EasyPrototy
         },
 
         __statics__ : {
-            patternSelfPath : /^(https?:\/\/[^\/]+)?\/layoutftv\/arches\/common\/javascripts\//,
-        //    patternSelfPath = /jsLibs/;
-
-            searchStaticDomain : function searchStaticDomain(tagName, attrName) {
-                var tagList = document.getElementsByTagName(tagName),
-                    matches,
-                    i = tagList.length;
-
-                while (i--) {
-                    matches = FileInjection.patternSelfPath.exec(tagList[i].getAttribute(attrName));
-                    if (matches) {
-//                        FileInjection.prototype.staticDomain = matches[1] ||
-//                            document.location.protocol + '//' + document.location.hostname;
-                        return true;
-                    }
-                }
-                return false;
-            },
-
             getStaticUrl : function getStaticUrl(url) {
                 if (url && url.substr(0, 1) === '/') {
                     url = FileInjection.prototype.staticDomain + url;
                 }
 
                 return url;
-            },
-
-            onWindowLoad : function onWindowLoad() {
-                var tagsTypes = {
-                        script : 'src',
-                        link : 'href'
-                    },
-                    key;
-
-                for (key in tagsTypes) {
-                    if (FileInjection.searchStaticDomain(key, tagsTypes[key])) {
-                        break;
-                    }
-                }
             }
         }
     }, [
         'createNode'
     ]);
-
-    if (global.addEventListener) {
-        global.addEventListener('load', FileInjection.onWindowLoad, false);
-    }
-    else if (global.attachEvent) {
-        global.attachEvent('onload', FileInjection.onWindowLoad);
-    }
-
-    FileInjection.onWindowLoad();
 
     return FileInjection;
 });
