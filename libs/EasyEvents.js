@@ -79,7 +79,7 @@ define('EasyEvents', ['EasyPrototype'], function(EasyPrototype) {
                 }
             }
             else {
-                len = this.callbacks.length
+                len = this.callbacks.length;
                 if (callback instanceof EventCallback) {
                     while (len--) {
                         if (this.callbacks[len] === callback) {
