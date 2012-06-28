@@ -210,4 +210,4 @@ define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquer
 
     return framework;
 });
-}(this, this.define, this.Error));
+}(this, this.define, this.Error, this.eval, this.setTimeout));
