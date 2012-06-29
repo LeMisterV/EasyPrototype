@@ -24,19 +24,29 @@
                     var name = this.className;
                     var Constructor = this;
 
-                    if (framework[name]) {
+                    var recever = framework;
+
+                    if ('framework' in global && framework !== global.framework) {
+                        recever = global.framework;
+                    }
+
+                    var instance = recever[name];
+
+                    if (instance) {
                         if (typeof console !== 'undefined' && 'error' in console) {
                             console.error(new Error('Double chargement du framework ' + name));
                         }
                     }
                     else {
-                        framework[name] = new Constructor();
+                        recever[name] = new Constructor();
 
                         // Raccourci en tant que plugin jQuery (deprecated)
                         if ($ !== undef) {
-                            $[name] = framework[name].callback('exec');
+                            $[name] = recever[name].callback('exec');
                         }
                     }
+
+                    framework[name] = recever[name];
                 },
 
                 init : function init() {
