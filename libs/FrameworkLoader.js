@@ -1,5 +1,7 @@
 (function(global, define, Error, eval, setTimeout, undef) {
-    "use strict";
+    /** Unable to use "use strict" because we need to use eval
+        We must use another solution to get params values, than we can use "use strict"
+    */
 
     define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquery'], function(EasyPrototype, EventsManager, ScriptInjection, $) {
 
@@ -146,11 +148,12 @@
 
                         if (txt && matches) {
                             try {
+/*
                                 eval(
                                     'window.framework.LoaderPrototype.paramsReceiver = ' +
                                     txt
                                 );
-
+*/
                                 if (matches[1] in FrameworkLoader.paramsReceiver) {
                                     params = FrameworkLoader.paramsReceiver[matches[1]];
                                 }
@@ -213,4 +216,4 @@
 
         return framework;
     });
-}(this, this.define, this.Error, this.eval, this.setTimeout));
+}(this, define, this.Error, this.eval, this.setTimeout));
