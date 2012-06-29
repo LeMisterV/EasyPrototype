@@ -1,4 +1,6 @@
 (function(global, undef) {
+    "use strict";
+
     function define(moduleName, deps, constructor) {
         var depName;
         var len = deps.length;

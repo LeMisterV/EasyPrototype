@@ -1,4 +1,6 @@
 (function (define, setTimeout, undef) {
+    "use strict";
+
     define('EasyPrototype', [], function() {
 
         var tools = {
@@ -384,24 +386,24 @@
              * @return the new instance created, or the replacement if an already existing object is to be
              *   used instead (see getInstance method)
              */
-            commonConstruct : function commonConstruct(constructor, args) {
-                if (!(this instanceof constructor)) {
-                    constructor.argsAsArray = true;
-                    return new constructor(args);
+            commonConstruct : function commonConstruct(Constructor, args) {
+                if (!(this instanceof Constructor)) {
+                    Constructor.argsAsArray = true;
+                    return new Constructor(args);
                 }
 
                 // This slot makes it possible to get the construction function of an
                 // object, and than to get the prototype of this construction function
                 // So this makes it possible to find the super methods
-                this.constructor = constructor;
+                this.constructor = Constructor;
 
-                if(constructor.argsAsArray) {
-                    delete constructor.argsAsArray;
+                if(Constructor.argsAsArray) {
+                    delete Constructor.argsAsArray;
                     args = args[0];
                 }
 
-                if (constructor.createPrototype) {
-                    delete constructor.createPrototype;
+                if (Constructor.createPrototype) {
+                    delete Constructor.createPrototype;
                     tools.initPrototype.apply(this, args);
                 }
                 else {
