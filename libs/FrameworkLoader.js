@@ -1,21 +1,11 @@
-(function(global, define, Error, eval, setTimeout, undef) {
-    /** Unable to use "use strict" because we need to use eval
-        We must use another solution to get params values, than we can use "use strict"
+(function(global, define, Error, eval, setTimeout, JSON, undef) {
+    /*
+     Unable to use "use strict" because we need to use eval
+     We must use another solution to get params values, than we can use "use strict"
     */
-
-    define('framework', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquery'], function(EasyPrototype, EventsManager, ScriptInjection, $) {
-
-        var framework = {
-                register : function() {
-                    var Constructor;
-                    var args = [].slice.call(arguments).reverse();
-                    args.push(FrameworkLoader);
-                    Constructor = EasyPrototype.createClass.apply(this, args.reverse());
-                    return framework[Constructor.className];
-                }
-            },
-
-            FrameworkLoader = framework.LoaderPrototype = EasyPrototype.createProtoClass(
+    define.noglobal = true;
+    define('FrameworkLoader', ['EasyPrototype', 'EventsManager', 'ScriptInjection', 'jquery'], function(EasyPrototype, EventsManager, ScriptInjection, $) {
+        var FrameworkLoader = EasyPrototype.createProtoClass(
                 'FrameworkLoader',
                 {
                 autoLoad : false,
@@ -24,13 +14,14 @@
                     var name = this.className;
                     var Constructor = this;
 
-                    var recever = framework;
+                    var recever = FrameworkLoader.registered;
+                    var instance;
 
-                    if ('framework' in global && framework !== global.framework) {
+                    if ('framework' in global) {
                         recever = global.framework;
                     }
 
-                    var instance = recever[name];
+                    instance = recever[name];
 
                     if (instance) {
                         if (typeof console !== 'undefined' && 'error' in console) {
@@ -39,14 +30,9 @@
                     }
                     else {
                         recever[name] = new Constructor();
-
-                        // Raccourci en tant que plugin jQuery (deprecated)
-                        if ($ !== undef) {
-                            $[name] = recever[name].callback('exec');
-                        }
                     }
 
-                    framework[name] = recever[name];
+                    FrameworkLoader.registered[name] = recever[name];
                 },
 
                 init : function init() {
@@ -129,6 +115,8 @@
                 },
 
                 __statics__ : {
+                    registered : {},
+
                     loadingDelay : 100,
 
                     paramsControl : /^\s*\{\s*((framework)?params)\s*:\s*\{(.|\s)*\}\s*\}\s*$/i,
@@ -154,18 +142,28 @@
                         var txt = $(this).text().replace('//<![CDATA[', '').replace('//]]>', ''),
                             params,
                             frameworkName,
-                            matches = FrameworkLoader.paramsControl.exec(txt);
+                            matches = FrameworkLoader.paramsControl.exec(txt),
+                            recever;
 
                         if (txt && matches) {
                             try {
-/*
-                                eval(
-                                    'window.framework.LoaderPrototype.paramsReceiver = ' +
-                                    txt
-                                );
-*/
-                                if (matches[1] in FrameworkLoader.paramsReceiver) {
-                                    params = FrameworkLoader.paramsReceiver[matches[1]];
+                                if (JSON !== undef && 'parse' in JSON) {
+                                    var params = JSON.parse(txt)[matches[1]];
+                                }
+                                else if ('framework' in global) {
+                                    eval(
+                                        'window.framework.LoaderPrototype.paramsReceiver = ' +
+                                        txt
+                                    );
+
+                                    if (matches[1] in global.framework.LoaderPrototype.paramsReceiver) {
+                                        params = global.framework.LoaderPrototype.paramsReceiver[matches[1]];
+                                    }
+
+                                    delete global.framework.LoaderPrototype.paramsReceiver;
+                                }
+                                else {
+                                    return;
                                 }
                             }
                             catch(e) {
@@ -175,15 +173,19 @@
                                 return;
                             }
 
-                            delete FrameworkLoader.paramsReceiver;
+                            recever = FrameworkLoader.registered;
+
+                            if ('framework' in global) {
+                                recever = global.framework;
+                            }
 
                             for (frameworkName in params) {
                                 if (frameworkName !== 'LoaderPrototype' && frameworkName !== 'register') {
-                                    if (!(frameworkName in framework)) {
-                                        framework[frameworkName] = {};
+                                    if (!(frameworkName in recever)) {
+                                        recever[frameworkName] = {};
                                     }
-                                    framework[frameworkName].inlineParams = FrameworkLoader.mergeRecursive(
-                                        framework[frameworkName].inlineParams,
+                                    recever[frameworkName].inlineParams = FrameworkLoader.mergeRecursive(
+                                        recever[frameworkName].inlineParams,
                                         params[frameworkName]
                                     );
                                 }
@@ -204,9 +206,29 @@
                     },
 
                     onFrameworkNeeded : function onFrameworkNeeded(FrameworkName) {
-                        if (FrameworkName !== 'windowLoaded' && FrameworkName in framework) {
-                            framework[FrameworkName].askLoad();
+                        var recever = FrameworkLoader.registered;
+
+                        if ('framework' in global) {
+                            recever = global.framework;
                         }
+
+                        if (FrameworkName !== 'windowLoaded' && FrameworkName in recever) {
+                            recever[FrameworkName].askLoad();
+                        }
+                    },
+
+                    register : function register() {
+                        var Constructor;
+                        var args = [].slice.call(arguments).reverse();
+                        var recever = FrameworkLoader.registered;
+
+                        if ('framework' in global) {
+                            recever = global.framework;
+                        }
+
+                        args.push(FrameworkLoader);
+                        Constructor = EasyPrototype.createClass.apply(this, args.reverse());
+                        return recever[Constructor.className];
                     }
                 }
             });
@@ -222,8 +244,6 @@
             global.attachEvent('onload', FrameworkLoader.onWindowLoad);
         }
 
-        framework.LoaderPrototype = FrameworkLoader;
-
-        return framework;
+        return FrameworkLoader;
     });
-}(this, define, this.Error, this.eval, this.setTimeout));
+}(this, define, this.Error, this.eval, this.setTimeout, this.JSON));
