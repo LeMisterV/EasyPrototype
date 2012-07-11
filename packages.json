@@ -36,7 +36,8 @@
         "FrameworkLoader" : {
             "#EasyPrototype : FileInjection" : true,
 
-            "EasyPrototype/libs/FrameworkLoader.js"                                     : "utf-8"
+            "EasyPrototype/libs/FrameworkLoader.js"                                     : "utf-8",
+            "EasyPrototype/libs/framework.js"                                         : "utf-8"
         },
 
         "debug" : {

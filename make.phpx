@@ -9,3 +9,11 @@ makeJsPackage(
     'EventsManager'
 );
 
+makeJsPackage(
+    jsPackage::getFiles('FrameworkLoader'),
+    PATH_JS_PROD . 'FrameworkLoader.js',
+    null,
+    'utf-8',
+    'FrameworkLoader'
+);
+
