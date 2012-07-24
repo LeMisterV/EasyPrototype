@@ -547,7 +547,7 @@
 
                     setTimeout(function () {
                         func.apply(obj, args);
-                    }, 0);
+                    }, delay);
                 };
             },
 
