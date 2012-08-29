@@ -40,6 +40,12 @@
             "EasyPrototype/libs/framework.js"                                         : "utf-8"
         },
 
+        "EasyUrl" : {
+            "#EasyPrototype : base" : true,
+
+            "EasyPrototype/libs/EasyUrl.js"                                         : "utf-8"
+        },
+
         "debug" : {
             "#EasyPrototype : default" : true,
 
