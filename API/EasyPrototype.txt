@@ -1,0 +1,17 @@
+
+
+EasyPrototype
+    callback
+    lazyCallback
+    getSuper
+    execSuper
+    getConstructor
+    contains
+    toString
+
+    # className
+    # contains
+    # getConstructor
+    # toString
+    # createProtoClass
+    # createClass
