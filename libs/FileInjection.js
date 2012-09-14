@@ -3,8 +3,6 @@
 
     define('FileInjection', ['EasyPrototype', 'EventsManager'], function(EasyPrototype, EventsManager) {
 
-        var ENV = document.location.hostname.replace(/^((?:pp|dev|intg|local)(\.|$))?.*$/, '$1');
-
         var FileInjection = EasyPrototype.createProtoClass(
             'FileInjection',
             EventsManager,
@@ -15,7 +13,7 @@
 
             defaultLoadSupposition : false,
 
-            staticDomain : 'http://' + ENV + 'static.francetv.fr',
+            staticDomain : 'http://static.francetv.fr',
 
             getUid : function(params) {
                 return (params.type || this.type) + params.url + params.charset + (params.document || document).location.href;
