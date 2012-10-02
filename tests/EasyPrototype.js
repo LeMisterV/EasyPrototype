@@ -38,5 +38,51 @@
                 expect(testInstance instanceof global.EasyPrototype).toBe(true);
             });
         });
+
+        describe('Gestion des callbacks', function() {
+            var TestClass,
+                testInstance,
+                myMethode,
+                myMethodeCallback;
+
+            it('should be possible to use the "callback" methode to keep execution context when binding events or delegate callback execution of a methode', function() {
+                TestClass = global.EasyPrototype.createClass('MyClass', {
+                    myMethode : function myMethode() {
+                        return this;
+                    }
+                });
+
+                testInstance = new TestClass();
+
+                myMethode = testInstance.myMethode;
+                myMethodeCallback = testInstance.callback('myMethode');
+
+                expect(myMethode()).toBe(global);
+                expect(myMethodeCallback()).toBe(testInstance);
+            });
+        });
+
+        describe('Gestion des callbacks avec contexte', function() {
+            var TestClass,
+                testInstance,
+                myMethode,
+                myMethodeCallback;
+
+            it('should be possible to use the "callbackWithContext" methode to keep execution context when binding events or delegate callback execution of a methode', function() {
+                TestClass = global.EasyPrototype.createClass('MyClass', {
+                    myMethode : function myMethode(context) {
+                        return context;
+                    }
+                });
+
+                testInstance = new TestClass();
+
+                myMethode = testInstance.myMethode;
+                myMethodeCallback = testInstance.callback('myMethode');
+
+                expect(myMethode()).toBe(global);
+                expect(myMethodeCallback()).toBe(testInstance);
+            });
+        });
     });
 }(this));

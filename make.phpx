@@ -1,5 +1,5 @@
 <?php
-require('/share/tools/jsPackTools/makeJsPackage.php');
+require('/config/tools/jsPackTools/makeJsPackage.php');
 
 makeJsPackage(
     jsPackage::getFiles('EventsManager'),

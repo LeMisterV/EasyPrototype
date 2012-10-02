@@ -119,7 +119,7 @@
 
                     loadingDelay : 100,
 
-                    paramsControl : /^\s*\{\s*((framework)?params)\s*:\s*\{(.|\s)*\}\s*\}\s*$/i,
+                    paramsControl : /^\s*\{\s*"((framework)?params)"\s*:\s*\{(.|\s)*\}\s*\}\s*$/i,
 
                     events : new EventsManager(),
 
@@ -139,6 +139,7 @@
                     },
 
                     collectScriptParams : function collectScriptParams() {
+
                         var txt = $(this).text().replace('//<![CDATA[', '').replace('//]]>', ''),
                             params,
                             frameworkName,
