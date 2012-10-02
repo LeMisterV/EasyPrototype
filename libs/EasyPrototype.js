@@ -474,23 +474,55 @@
                 return result;
             },
 
-            getCallback : function getCallback(obj, methodName, forceArgs) {
-                var method = obj[methodName];
+            getCallback : function getCallback(obj, methodName, forceArgs, forceContext) {
+                var cacheKey, method;
+                var registerCache = false;
+
+                forceArgs = forceArgs || [];
+
+                // the callback method is different for each set of given arguments. So it's much
+                // more complicated to have a cache solution in the case arguments are given.
+                // That's why there's no cache when there's arguments
+                if (!forceArgs.length) {
+                    if (!('_callbacks' in obj)) {
+                        obj._callbacks = {};
+                    }
+
+                    cacheKey = methodName;
+
+                    if (forceContext) {
+                        cacheKey += 'WithContext';
+                    }
+
+                    if (cacheKey in obj._callbacks) {
+                        return obj._callbacks[cacheKey];
+                    }
+
+                    registerCache = true;
+                }
+
+                method = obj[methodName];
 
                 if (typeof method !== 'function') {
                     throw new Error('The "' + methodName + '" method doesn\'t  exist');
                 }
 
-                forceArgs = forceArgs || [];
-
                 function callback() {
                     var args = forceArgs.slice(0);
                     args.push.apply(args, arguments);
+
+                    if (forceContext) {
+                        args.splice(0, 0, this);
+                    }
 
                     if (obj[methodName] === callback) {
                         return method.apply(obj, args);
                     }
                     return obj[methodName].apply(obj, args);
+                }
+
+                if (registerCache) {
+                    obj._callbacks[cacheKey] = callback;
                 }
 
                 return callback;
@@ -510,37 +542,24 @@
 
             // returns a callback function for the given method
             callback : function callback(methodName) {
-                // the callback method is different for each set of given arguments. So it's much
-                // more complicated to have a cache solution in the case arguments are given.
-                // That's why there's no cache when there's arguments, and so we can return directly
-                // the callback function
-                if (arguments.length > 1) {
-                    return tools.getCallback(this, methodName, [].slice.call(arguments, 1));
-                }
-                if (!('_callbacks' in this)) {
-                    this._callbacks = {};
-                }
-                if (!(methodName in this._callbacks)) {
-                    this._callbacks[methodName] = tools.getCallback(this, methodName);
-                }
-                return this._callbacks[methodName];
+                return tools.getCallback(this, methodName, [].slice.call(arguments, 1));
+            },
+
+            callbackWithContext : function callbackWithContext() {
+                return tools.getCallback(this, methodName, [].slice.call(arguments, 1), true);
             },
 
             lazyCallback : function lazyCallback() {
                 var obj = this,
-                    args = arguments,
                     delay = 0,
-                    func,
-                    rest;
+                    func;
 
-                if (typeof args[1] === 'number') {
-                    delay = args[1];
-                    rest = [].slice.call(args, 2);
-                    args.length = 1;
-                    rest.push.apply(args, rest);
+                if (typeof arguments[1] === 'number') {
+                    delay = arguments[1];
+                    [].splice.call(arguments, 1, 1);
                 }
 
-                func = this.callback.apply(this, args);
+                func = this.callback.apply(this, arguments);
 
                 return function lazyCallback() {
                     var args = arguments;
